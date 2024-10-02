@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Invoice</title>
+</head>
+<body>
+    <h2>Create Invoice</h2>
+    <form action="/create_invoice" method="post">
+        <label>Recipient Email:</label><br />
+        <input type="email" name="email" required /><br /><br />
+
+        <label>Invoice Details:</label><br />
+        <textarea name="invoice_data" rows="10" cols="50">{{.InvoiceData}}</textarea><br /><br />
+
+        <button type="submit">Send Invoice</button>
+    </form>
+</body>
+</html>

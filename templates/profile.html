@@ -1,16 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Login</title>
+    <title>Profile - Invoicerator</title>
+    <!-- Include Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      crossorigin="anonymous"
+    />
 </head>
 <body>
-    <h2>Login</h2>
-    <form action="/login" method="post">
-        <label>Username:</label><br />
-        <input type="text" name="username" required /><br />
-        <label>Password:</label><br />
-        <input type="password" name="password" required /><br /><br />
-        <button type="submit">Login</button>
-    </form>
+    <div class="container mt-5">
+        <h2>Profile Settings</h2>
+
+        <!-- Display any success or error messages -->
+        {{if .Success}}
+            <div class="alert alert-success">{{.Success}}</div>
+        {{end}}
+        {{if .Error}}
+            <div class="alert alert-danger">{{.Error}}</div>
+        {{end}}
+
+        <!-- Form for updating company information -->
+        <form action="/profile" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Company Name:</label>
+                <input type="text" name="company_name" class="form-control" value="{{.User.CompanyName}}" required>
+            </div>
+            <div class="form-group">
+                <label>Company Address:</label>
+                <textarea name="company_address" class="form-control" required>{{.User.CompanyAddress}}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Company Phone:</label>
+                <input type="text" name="company_phone" class="form-control" value="{{.User.CompanyPhone}}" required>
+            </div>
+            <!-- Upload letterhead -->
+            <div class="form-group">
+                <label>Upload Company Letterhead:</label>
+                <input type="file" name="letterhead" accept="image/*" class="form-control-file">
+                {{if .User.LetterheadPath}}
+                    <p>Current letterhead:</p>
+                    <img src="{{.User.LetterheadPath}}" alt="Letterhead" style="max-height: 100px;">
+                {{end}}
+            </div>
+            <!-- Select fields to include on invoices -->
+            <div class="form-group">
+                <label>Select Fields to Include on Invoices:</label><br>
+                {{range $index, $field := .AvailableFields}}
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="fields" value="{{$field}}" id="field{{$index}}" {{if (index $.SelectedFieldsMap $field)}}checked{{end}}>
+                        <label class="form-check-label" for="field{{$index}}">{{$field}}</label>
+                    </div>
+                {{end}}
+            </div>
+            <button type="submit" class="btn btn-primary">Save Profile</button>
+        </form>
+        <br>
+        <a href="/create_invoice" class="btn btn-success">Create Invoice</a>
+        <a href="/logout" class="btn btn-danger">Logout</a>
+    </div>
 </body>
 </html>

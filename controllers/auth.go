@@ -31,11 +31,21 @@ func PerformLogin(c *gin.Context) {
 	log.Println("User logged in successfully:", username)
 
 	// Redirect to the profile page
-	c.Redirect(http.StatusFound, "/profile")
+	c.Redirect(http.StatusFound, "/options")
 }
 
 func ShowHomePage(c *gin.Context) {
-	c.HTML(http.StatusOK, "home.html", nil)
+	authenticated, _ := c.Get("Authenticated")
+	username, _ := c.Get("Username")
+
+	c.HTML(http.StatusOK, "home.html", gin.H{
+		"Authenticated": authenticated,
+		"Username":      username,
+	})
+}
+
+func ShowOptionsPage(c *gin.Context) {
+	c.HTML(http.StatusOK, "options.html", gin.H{})
 }
 
 func ShowLoginPage(c *gin.Context) {

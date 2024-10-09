@@ -8,14 +8,18 @@
       href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
       crossorigin="anonymous"
     />
+    <!-- Link to external styles.css -->
+    <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
-    <div class="container mt-5">
-        <h2>Manage Your Account and Invoices</h2>
-        <a href="/profile" class="btn btn-primary">Profile</a>
-        <a href="/create_invoice" class="btn btn-success">Create Invoice</a>
-        <a href="/edit_invoice" class="btn btn-warning">Edit Invoice</a>
-        <a href="/logout" class="btn btn-danger">Logout</a>
+    <div class="d-flex justify-content-center align-items-center min-vh-100">
+        <div class="text-center">
+            <h2>Manage Your Account and Invoices</h2>
+            <a href="/profile" class="btn btn-primary btn-block mb-3">Profile</a>
+            <a href="/create_invoice" class="btn btn-success btn-block mb-3">Create Invoice</a>
+            <a href="/edit_invoice" class="btn btn-warning btn-block mb-3">Edit Invoice</a>
+            <a href="/logout" class="btn btn-danger btn-block mb-3">Logout</a>
+        </div>
     </div>
 </body>
 </html>

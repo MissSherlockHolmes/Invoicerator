@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"invoicerator/config"
 	"invoicerator/models"
 	"log"
@@ -54,6 +55,11 @@ func ShowLoginPage(c *gin.Context) {
 
 func ShowSignupPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "signup.html", nil)
+}
+
+func ShowCreateInvoicePage(c *gin.Context) {
+	fmt.Println("Rendering Create Invoice Page") // Debugging
+	c.HTML(http.StatusOK, "create_invoice.html", nil)
 }
 
 func PerformSignup(c *gin.Context) {

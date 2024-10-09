@@ -20,7 +20,7 @@ Invoicerator is a web application that allows users to create and send custom PD
 ## Main Milestones
 
 1. **Project Setup and Environment Configuration**: Setting up repositories, basic environment configuration for both back-end and front-end, database initialization, and basic routing.
-2. **User Authentication and Database Integration**: Implement user registration, login functionality, and integration with PostgreSQL for account management.
+2. **User Authentication and Database Integration**: Implement user registration, login functionality, and integration with SQLite for account management.
 3. **Form Builder Development**: Build the form creation interface, including the ability to add text fields, checkboxes, and other form elements.
 4. **PDF Generation and Management**: Implement the functionality to generate and send PDFs and delete them immediately after they are sent.
 5. **PDF Upload and Re-editing**: Develop the feature allowing users to upload old PDF forms, auto-populate fields, and edit them.

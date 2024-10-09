@@ -5,6 +5,7 @@ type User struct {
 	Username       string `gorm:"unique;not null"`
 	Password       string `gorm:"not null"`
 	CompanyName    string
+	CompanyEmail   string
 	CompanyAddress string
 	CompanyPhone   string
 	LetterheadPath string

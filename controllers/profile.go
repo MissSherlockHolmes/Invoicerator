@@ -11,7 +11,12 @@ import (
 )
 
 func ShowProfilePage(c *gin.Context) {
-	username, _ := c.Cookie("session_token")
+	username, err := c.Cookie("session_token")
+	if err != nil {
+		c.HTML(http.StatusUnauthorized, "profile.html", gin.H{"Error": "Not logged in"})
+		return
+	}
+
 	var user models.User
 	if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "profile.html", gin.H{"Error": "User not found"})
@@ -39,7 +44,12 @@ func ShowProfilePage(c *gin.Context) {
 }
 
 func UpdateProfile(c *gin.Context) {
-	username, _ := c.Cookie("session_token")
+	username, err := c.Cookie("session_token")
+	if err != nil {
+		c.HTML(http.StatusUnauthorized, "profile.html", gin.H{"Error": "Not logged in"})
+		return
+	}
+
 	var user models.User
 	if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "profile.html", gin.H{"Error": "User not found"})
@@ -48,12 +58,14 @@ func UpdateProfile(c *gin.Context) {
 
 	// Get form data
 	companyName := c.PostForm("company_name")
+	companyEmail := c.PostForm("company_email")
 	companyAddress := c.PostForm("company_address")
 	companyPhone := c.PostForm("company_phone")
 	selectedFields := c.PostFormArray("fields")
 
 	// Update user fields
 	user.CompanyName = companyName
+	user.CompanyEmail = companyEmail
 	user.CompanyAddress = companyAddress
 	user.CompanyPhone = companyPhone
 

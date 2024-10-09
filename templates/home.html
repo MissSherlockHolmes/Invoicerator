@@ -2,27 +2,32 @@
 <html>
 <head>
     <title>Welcome to Invoicerator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- Include Bootstrap CSS -->
     <link
-      rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-      crossorigin="anonymous"
+        rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+        crossorigin="anonymous"
     />
+    <!-- Link to external styles.css -->
+    <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
-    <div class="container mt-5">
-        {{if .Authenticated}}
-            <h2>Welcome back, {{.Username}}!</h2>
-            <p>You can manage your account and start creating invoices.</p>
-            <!-- Updated to navigate to options page -->
-            <a href="/options" class="btn btn-primary">Options</a>
-            <a href="/logout" class="btn btn-danger">Logout</a>
-        {{else}}
-            <h2>Welcome to Invoicerator</h2>
-            <p>Create and send invoices quickly and securely.</p>
-            <a href="/login" class="btn btn-primary">Login</a>
-            <a href="/signup" class="btn btn-success">Sign Up</a>
-        {{end}}
+    <div class="d-flex justify-content-center align-items-center min-vh-100">
+        <div class="text-center">
+            {{if .Authenticated}}
+                <h2>Welcome back, {{.Username}}!</h2>
+                <p style="font-size: 16px; color: lightgray;"> Invoicing made better, quicker, and maybe almost fun.</p>
+                <!-- Updated to navigate to options page -->
+                <a href="/options" class="btn btn-primary btn-block mb-3">Options</a>
+                <a href="/logout" class="btn btn-danger btn-block mb-3">Logout</a>
+            {{else}}
+                <h2>Welcome to Invoicerator</h2>
+                <p>Create and send invoices quickly and securely.</p>
+                <a href="/login" class="btn btn-primary btn-block mb-3">Login</a>
+                <a href="/signup" class="btn btn-success btn-block mb-3">Sign Up</a>
+            {{end}}
+        </div>
     </div>
 </body>
 </html>

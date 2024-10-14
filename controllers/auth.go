@@ -6,6 +6,7 @@ import (
 	"invoicerator/models"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -93,8 +94,39 @@ func PerformSignup(c *gin.Context) {
 }
 
 func Logout(c *gin.Context) {
-	// Clear the session cookie
-	c.SetCookie("session_token", "", -1, "/", "localhost", false, true)
-	// Redirect to the home page
+	// Log the user out for debugging purposes
+	sessionToken, err := c.Cookie("session_token")
+	if err == nil {
+		log.Println("Attempting to log out user:", sessionToken)
+	}
+
+	// Clear the session cookie (attempt multiple variations for Safari)
+	domains := []string{"localhost", ""} // Try both "localhost" and "" (empty domain)
+	paths := []string{"/", ""}           // Try both "/" and "" (root and empty paths)
+
+	for _, domain := range domains {
+		for _, path := range paths {
+			// First clear with the default method
+			c.SetCookie("session_token", "", -1, path, domain, false, true)
+
+			// Then clear explicitly using http.SetCookie for more control
+			http.SetCookie(c.Writer, &http.Cookie{
+				Name:     "session_token",
+				Value:    "",
+				Path:     path,                  // Try both "/" and "" as path values
+				Domain:   domain,                // Try both "localhost" and "" as domain values
+				MaxAge:   -1,                    // Expire immediately
+				Expires:  time.Unix(0, 0),       // Set expiration in the past
+				Secure:   true,                  // Change to true if you're using HTTPS
+				HttpOnly: true,                  // Ensure HttpOnly is true
+				SameSite: http.SameSiteNoneMode, // Use None for Safari compatibility
+			})
+		}
+	}
+
+	// Log to verify if the cookie deletion was attempted
+	log.Println("Logout attempt completed. Cookie should be cleared.")
+
+	// Redirect to home page after clearing the cookie
 	c.Redirect(http.StatusFound, "/")
 }

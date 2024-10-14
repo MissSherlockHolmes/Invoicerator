@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"invoicerator/config"
 	"invoicerator/models"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -67,14 +68,21 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 	pdf.Ln(10)
 
 	for i := 0; i < len(itemDescriptions); i++ {
-		quantity, err := strconv.ParseFloat(itemQuantities[i], 64)
+		quantityStr := itemQuantities[i]
+		rateStr := itemRates[i]
+
+		log.Printf("Processing item %d: quantity='%s', rate='%s'", i, quantityStr, rateStr)
+
+		quantity, err := strconv.ParseFloat(quantityStr, 64)
 		if err != nil {
-			return nil, err
+			log.Printf("Error parsing quantity for item %d: %v", i, err)
+			return nil, fmt.Errorf("invalid quantity for item %d: %w", i+1, err)
 		}
 
-		rate, err := strconv.ParseFloat(itemRates[i], 64)
+		rate, err := strconv.ParseFloat(rateStr, 64)
 		if err != nil {
-			return nil, err
+			log.Printf("Error parsing rate for item %d: %v", i, err)
+			return nil, fmt.Errorf("invalid rate for item %d: %w", i+1, err)
 		}
 
 		amount := quantity * rate

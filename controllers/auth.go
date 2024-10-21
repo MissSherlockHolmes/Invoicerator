@@ -32,7 +32,7 @@ func PerformLogin(c *gin.Context) {
 	c.SetCookie("session_token", username, 3600, "/", "", false, true)
 	log.Println("User logged in successfully:", username)
 
-	// Redirect to the profile page
+	// Redirect to the menu page
 	c.Redirect(http.StatusFound, "/options")
 }
 

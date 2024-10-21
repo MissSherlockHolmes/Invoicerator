@@ -35,7 +35,7 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 
 	// Add company letterhead/logo if available
 	if user.LetterheadPath != "" {
-		pdf.ImageOptions("."+user.LetterheadPath, 10, 10, 0, 0, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+		pdf.ImageOptions("."+user.LetterheadPath, 10, 10, 0, 20, false, gofpdf.ImageOptions{ImageType: "JPG"}, 0, "")
 		pdf.Ln(20) // Add some space after the logo
 	}
 
@@ -106,10 +106,13 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 
 	// Output the PDF to memory (using a buffer instead of a file)
 	var buf bytes.Buffer
+	log.Printf("generating pdf..")
 	err := pdf.Output(&buf)
 	if err != nil {
+		log.Printf("ERROR: %s..", err)
 		return nil, err
 	}
+	log.Printf("Done generating pdf.")
 
 	return buf.Bytes(), nil
 }

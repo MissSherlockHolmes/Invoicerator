@@ -40,8 +40,8 @@ func main() {
 		authorized.POST("/profile", controllers.UpdateProfile)
 		authorized.GET("/create_invoice", controllers.ShowCreateInvoicePage)
 		authorized.POST("/create_invoice", controllers.CreateInvoice)
-		authorized.GET("/upload_pdf", controllers.ShowUploadPDFPage)
-		authorized.POST("/upload_pdf", controllers.UploadPDF)
+		//authorized.GET("/upload_pdf", controllers.ShowUploadPDFPage)
+		//authorized.POST("/upload_pdf", controllers.UploadPDF)
 		authorized.GET("/options", controllers.ShowOptionsPage)
 	}
 

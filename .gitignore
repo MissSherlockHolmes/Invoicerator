@@ -1,3 +1,5 @@
 .env
 invoicerator
 invoicerator.db
+uploads/
+static/uploads

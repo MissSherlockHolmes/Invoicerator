@@ -10,7 +10,10 @@ require (
 	gorm.io/gorm v1.25.12
 )
 
-require github.com/sendgrid/rest v2.6.9+incompatible // indirect
+require (
+	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/sendgrid/rest v2.6.9+incompatible // indirect
+)
 
 require (
 	github.com/bytedance/sonic v1.12.3 // indirect

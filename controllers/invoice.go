@@ -117,34 +117,26 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 	return buf.Bytes(), nil
 }
 
-// SendInvoiceWithSendGrid sends the invoice via SendGrid
-func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string, userEmails []string) error {
-	from := mail.NewEmail("Invoicerator", "no-reply@yourcompany.com")
-	to := mail.NewEmail("Client", recipientEmail)
+func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string) error {
+	// Log to check contents of recipientEmail
+	log.Printf("Recipient Email: %s", recipientEmail)
 
-	subject := "Your Invoice"
-	plainTextContent := "Please find your invoice attached."
-	htmlContent := "<p>Thank you for your business.</p>"
+	// Create the personalization object for the primary recipient
+	personalization := mail.NewPersonalization()
+	personalization.AddTos(mail.NewEmail("Client", recipientEmail)) // Primary recipient only
 
 	message := mail.NewV3Mail()
-	message.SetFrom(from)
-	message.Subject = subject
-
-	personalization := mail.NewPersonalization()
-	personalization.AddTos(to)
-
-	// Add user emails as CC
-	for _, email := range userEmails {
-		cc := mail.NewEmail("", email)
-		personalization.AddCCs(cc)
-	}
 	message.AddPersonalizations(personalization)
 
-	// Set email content
-	message.AddContent(mail.NewContent("text/plain", plainTextContent))
-	message.AddContent(mail.NewContent("text/html", htmlContent))
+	// Set the email sender, subject, and content
+	from := mail.NewEmail("Invoicerator Support", "no-reply@invoicerator.com")
+	subject := "Your Invoice from Invoicerator"
+	message.SetFrom(from)
+	message.Subject = subject
+	message.AddContent(mail.NewContent("text/plain", "Please find your invoice attached."))
+	message.AddContent(mail.NewContent("text/html", "<p>Thank you for your business!</p>"))
 
-	// Add PDF attachment
+	// Add the PDF attachment
 	encodedPDF := base64.StdEncoding.EncodeToString(pdfData)
 	attachment := mail.NewAttachment()
 	attachment.SetContent(encodedPDF)
@@ -153,18 +145,17 @@ func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string, userEmails [
 	attachment.SetDisposition("attachment")
 	message.AddAttachment(attachment)
 
+	// Send the email
 	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
 	response, err := client.Send(message)
 	if err != nil {
-		fmt.Println("Failed to send invoice:", err)
+		log.Println("Failed to send invoice:", err)
 		return err
 	}
-
-	fmt.Printf("Email sent. Status code: %d\n", response.StatusCode)
+	log.Printf("Email sent. Status Code: %d, Response Body: %s", response.StatusCode, response.Body)
 	return nil
 }
 
-// CreateInvoice handles the final invoice creation and sends it via SendGrid
 func CreateInvoice(c *gin.Context) {
 	// Retrieve user info from session
 	username, _ := c.Cookie("session_token")
@@ -182,16 +173,15 @@ func CreateInvoice(c *gin.Context) {
 	}
 
 	// Get recipient email from form data
-	recipientEmail := c.PostForm("email")     // Client email from form
-	userEmails := []string{user.CompanyEmail} // Add the user's company email
+	recipientEmail := c.PostForm("email") // Client email from form
 
 	// Send the invoice via SendGrid
-	if err := SendInvoiceWithSendGrid(pdfData, recipientEmail, userEmails); err != nil {
+	if err := SendInvoiceWithSendGrid(pdfData, recipientEmail); err != nil {
 		c.String(http.StatusInternalServerError, "Error sending invoice via email")
 		return
 	}
 
-	// Return success message
+	// Confirm success to the user
 	c.String(http.StatusOK, "Invoice created and sent successfully")
 }
 

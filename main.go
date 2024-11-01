@@ -5,13 +5,19 @@ import (
 	"invoicerator/controllers"
 	"invoicerator/middleware"
 	"invoicerator/models"
+	"log"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
 	router := gin.Default()
 
 	// Set trusted proxies to nil
@@ -96,9 +102,8 @@ func main() {
 		}
 
 		// Send the invoice via SendGrid
-		recipientEmail := c.PostForm("email")     // Client email from form
-		userEmails := []string{user.CompanyEmail} // Add the user's company email
-		if err := controllers.SendInvoiceWithSendGrid(pdfData, recipientEmail, userEmails); err != nil {
+		recipientEmail := c.PostForm("email") // Client email from form
+		if err := controllers.SendInvoiceWithSendGrid(pdfData, recipientEmail); err != nil {
 			c.String(http.StatusInternalServerError, "Error sending invoice via email")
 			return
 		}

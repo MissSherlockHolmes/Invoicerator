@@ -186,8 +186,9 @@ h2 {
 }
 
 /* Alert Styles */
-.alert {
-    background-color: rgba(255, 255, 255, 0.1);
+.alert-success {
+    color: rgb(128, 255, 0);
+    background-color: rgba(255, 255, 255, 0.137);
     border: none;
 }
 
@@ -284,4 +285,9 @@ a:hover {
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+.text-muted {
+    color: #ffffff !important; /* or any other color that contrasts with the background */
+    font-size: 0.9em;
 }

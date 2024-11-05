@@ -105,7 +105,9 @@ func main() {
 
 			// Send the invoice via SendGrid
 			recipientEmail := c.PostForm("email") // Client email from form
-			if err := controllers.SendInvoiceWithSendGrid(pdfData, recipientEmail); err != nil {
+			companyEmail := user.CompanyEmail     // Get company email from user profile
+
+			if err := controllers.SendInvoiceWithSendGrid(pdfData, recipientEmail, companyEmail); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invoice via email"})
 				return
 			}

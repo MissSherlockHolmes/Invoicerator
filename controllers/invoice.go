@@ -117,7 +117,7 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 	return buf.Bytes(), nil
 }
 
-func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string) error {
+func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string, companyEmail string) error {
 	// Log to check contents of recipientEmail
 	log.Printf("Recipient Email: %s", recipientEmail)
 
@@ -127,6 +127,11 @@ func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string) error {
 
 	message := mail.NewV3Mail()
 	message.AddPersonalizations(personalization)
+
+	if companyEmail != "" {
+		cc := mail.NewEmail("", companyEmail)
+		message.Personalizations[0].AddCCs(cc)
+	}
 
 	// Set the email sender, subject, and content
 	from := mail.NewEmail("Invoicerator Support", "no-reply@invoicerator.com")
@@ -174,9 +179,10 @@ func CreateInvoice(c *gin.Context) {
 
 	// Get recipient email from form data
 	recipientEmail := c.PostForm("email") // Client email from form
+	companyEmail := user.CompanyEmail     // Get company email from user profile
 
 	// Send the invoice via SendGrid
-	if err := SendInvoiceWithSendGrid(pdfData, recipientEmail); err != nil {
+	if err := SendInvoiceWithSendGrid(pdfData, recipientEmail, companyEmail); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invoice via email"})
 		return
 	}

@@ -288,6 +288,38 @@ a:hover {
 }
 
 .text-muted {
-    color: #ffffff !important; /* or any other color that contrasts with the background */
+    color: #ffffff83 !important; /* or any other color that contrasts with the background */
     font-size: 0.9em;
 }
+
+/* Ensure white placeholder text for all inputs on the entire site */
+input::placeholder,
+textarea::placeholder {
+    color: #ffffff6b !important; /* White color with higher specificity */
+    opacity: 1; /* Ensure full opacity */
+}
+
+input::-webkit-input-placeholder, 
+textarea::-webkit-input-placeholder {
+    color: #ffffff5b !important;
+}
+
+input::-moz-placeholder, 
+textarea::-moz-placeholder {
+    color: #ffffff5b !important;
+}
+
+input:-ms-input-placeholder, 
+textarea:-ms-input-placeholder {
+    color: #ffffff5b !important;
+}
+
+input:-moz-placeholder, 
+textarea:-moz-placeholder {
+    color: #ffffff5b !important;
+}
+
+input, textarea {
+    color: #ffffff !important; /* Ensures text color is white while typing */
+}
+

@@ -86,32 +86,32 @@ func main() {
 			// Retrieve user info from session
 			username, err := c.Cookie("session_token")
 			if err != nil {
-				c.String(http.StatusUnauthorized, "Unauthorized")
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 				return
 			}
 
 			var user models.User
 			if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
-				c.String(http.StatusInternalServerError, "User not found")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
 				return
 			}
 
 			// Generate the final PDF invoice
 			pdfData, err := controllers.GenerateInvoicePDF(c, user, false)
 			if err != nil {
-				c.String(http.StatusInternalServerError, "Error generating PDF")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating PDF"})
 				return
 			}
 
 			// Send the invoice via SendGrid
 			recipientEmail := c.PostForm("email") // Client email from form
 			if err := controllers.SendInvoiceWithSendGrid(pdfData, recipientEmail); err != nil {
-				c.String(http.StatusInternalServerError, "Error sending invoice via email")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invoice via email"})
 				return
 			}
 
-			// Return success message
-			c.String(http.StatusOK, "Invoice created and sent successfully")
+			// Send JSON response instead of plain text
+			c.JSON(http.StatusOK, gin.H{"message": "Invoice created and sent successfully"})
 		})
 
 		// Start server

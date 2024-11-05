@@ -161,14 +161,14 @@ func CreateInvoice(c *gin.Context) {
 	username, _ := c.Cookie("session_token")
 	var user models.User
 	if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
-		c.String(http.StatusInternalServerError, "User not found")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
 		return
 	}
 
 	// Generate the final PDF invoice in memory
 	pdfData, err := GenerateInvoicePDF(c, user, false)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Error generating PDF")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating PDF"})
 		return
 	}
 
@@ -177,12 +177,12 @@ func CreateInvoice(c *gin.Context) {
 
 	// Send the invoice via SendGrid
 	if err := SendInvoiceWithSendGrid(pdfData, recipientEmail); err != nil {
-		c.String(http.StatusInternalServerError, "Error sending invoice via email")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invoice via email"})
 		return
 	}
 
-	// Confirm success to the user
-	c.String(http.StatusOK, "Invoice created and sent successfully")
+	// Return success message as JSON
+	c.JSON(http.StatusOK, gin.H{"message": "Invoice created and sent successfully"})
 }
 
 // PreviewInvoice handles the invoice preview generation

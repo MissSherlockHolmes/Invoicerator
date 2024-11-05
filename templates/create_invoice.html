@@ -1,176 +1,225 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Create Invoice</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="stylesheet" href="/static/css/styles.css" />
-</head>
-<body>
-    {{template "navbar"}}
-    <div class="page-wrapper">
-        <div class="container mt-5">
-            <h2 class="text-center">Create Invoice</h2>
-            
-            <!-- Form Section -->
-            <form id="invoice-form" class="row g-3" action="/send_invoice" method="POST">
-                <!-- Recipient Information -->
-                <div class="col-md-6">
-                    <label for="recipientEmail" class="form-label">Recipient Email:</label>
-                    <input type="email" class="form-control" id="recipientEmail" name="email" required>
-                </div>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Create Invoice</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <link rel="stylesheet" href="/static/css/styles.css" />
+    </head>
+    <body>
+        {{template "navbar"}}
+        <div class="page-wrapper">
+            <div class="container mt-5">
+                <h2 class="text-center">Create Invoice</h2>
+                
+                <!-- Form Section -->
+                <form id="invoice-form" class="row g-3" action="/send_invoice" method="POST" onsubmit="sendInvoice(event)">
+                    <!-- Recipient Information -->
+                    <div class="col-md-6">
+                        <label for="recipientEmail" class="form-label">Recipient Email:</label>
+                        <input type="email" class="form-control" id="recipientEmail" name="email" required>
+                    </div>
 
-                <div class="col-md-6">
-                    <label for="recipientName" class="form-label">Recipient Name:</label>
-                    <input type="text" class="form-control" id="recipientName" name="recipient_name" required>
-                </div>
+                    <div class="col-md-6">
+                        <label for="recipientName" class="form-label">Recipient Name:</label>
+                        <input type="text" class="form-control" id="recipientName" name="recipient_name" required>
+                    </div>
 
-                <div class="col-md-6">
-                    <label for="recipientContact" class="form-label">Client Contact Info:</label>
-                    <input type="text" class="form-control" id="recipientContact" name="contact_info" placeholder="address, phone" required>
-                </div>
+                    <div class="col-md-6">
+                        <label for="recipientContact" class="form-label">Client Contact Info:</label>
+                        <input type="text" class="form-control" id="recipientContact" name="contact_info" placeholder="address, phone" required>
+                    </div>
 
-                <div class="col-md-6">
-                    <label for="projectName" class="form-label">Project Title:</label>
-                    <input type="text" class="form-control" id="projectName" name="project_name" required>
-                </div>
+                    <div class="col-md-6">
+                        <label for="projectName" class="form-label">Project Title:</label>
+                        <input type="text" class="form-control" id="projectName" name="project_name" required>
+                    </div>
 
-                <!-- Invoice Details -->
-                <div class="col-12">
-                    <label for="terms" class="form-label">Terms/Details:</label>
-                    <textarea class="form-control" id="terms" name="invoice_data" rows="3" placeholder="Enter the details of the invoice here">{{.InvoiceData}}</textarea>
-                </div>
+                    <!-- Invoice Details -->
+                    <div class="col-12">
+                        <label for="terms" class="form-label">Terms/Details:</label>
+                        <textarea class="form-control" id="terms" name="invoice_data" rows="3" placeholder="Enter the details of the invoice here">{{.InvoiceData}}</textarea>
+                    </div>
 
-                <!-- Add Line Items -->
-                <div class="col-12">
-                    <label class="form-label">Add Line Items:</label>
-                </div>
+                    <!-- Add Line Items -->
+                    <div class="col-12">
+                        <label class="form-label">Add Line Items:</label>
+                    </div>
 
-                <!-- Line Items Container -->
-                <div id="line-items-container">
+                    <!-- Line Items Container -->
+                    <div id="line-items-container">
+                        <div class="d-flex align-items-center mb-2">
+                            <input type="text" class="form-control me-2 item-description" placeholder="Item description" name="item_description[]">
+                            <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity" name="item_quantity[]" oninput="calculateTotal()">
+                            <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate" name="item_rate[]" oninput="calculateTotal()">
+                        </div>
+                    </div>
+
+                    <div class="col-12 text-end">
+                        <button type="button" class="btn btn-primary" onclick="addLineItem()">+ Add Line Item</button>
+                    </div>
+
+                    <input type="hidden" id="hiddenTotal" name="total_due">
+
+                    <!-- Notes Section -->
+                    <div class="col-12">
+                        <label for="invoiceNotes" class="form-label">Notes:</label>
+                        <textarea class="form-control" id="invoiceNotes" name="notes" rows="3" placeholder="Add any notes or payment instructions"></textarea>
+                    </div>
+
+                    <!-- Display Total -->
+                    <div class="col-12 text-end">
+                        <h4>Total: $<span id="invoice-total">0.00</span></h4>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="col-12 text-center">
+                        <button type="button" class="btn btn-primary" onclick="previewInvoice()">Preview Invoice</button>
+                        <button type="submit" class="btn btn-success">Send Invoice</button>
+                    </div>
+                </form>
+
+                <!-- Preview Section -->
+                <div id="preview-section" class="mt-5 d-none invoice-preview">
+                    <h3>Invoice Preview</h3>
+                    <div class="preview-content" id="preview-content">
+                        <iframe id="pdf-preview-iframe" class="pdf-preview-iframe" width="100%" height="600px"></iframe>
+                    </div>
+                    <button type="button" class="btn btn-warning" onclick="goBackToEdit()">Go Back to Edit</button>
+                    <button type="button" class="btn btn-success" onclick="submitInvoice()">Send Invoice</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- JavaScript -->
+        <script>
+            function addLineItem() {
+                const lineItemHTML = `
                     <div class="d-flex align-items-center mb-2">
                         <input type="text" class="form-control me-2 item-description" placeholder="Item description" name="item_description[]">
                         <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity" name="item_quantity[]" oninput="calculateTotal()">
                         <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate" name="item_rate[]" oninput="calculateTotal()">
-                    </div>
-                </div>
-
-                <div class="col-12 text-end">
-                    <button type="button" class="btn btn-primary" onclick="addLineItem()">+ Add Line Item</button>
-                </div>
-
-                <input type="hidden" id="hiddenTotal" name="total_due">
-
-                <!-- Notes Section -->
-                <div class="col-12">
-                    <label for="invoiceNotes" class="form-label">Notes:</label>
-                    <textarea class="form-control" id="invoiceNotes" name="notes" rows="3" placeholder="Add any notes or payment instructions"></textarea>
-                </div>
-
-                <!-- Display Total -->
-                <div class="col-12 text-end">
-                    <h4>Total: $<span id="invoice-total">0.00</span></h4>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="col-12 text-center">
-                    <button type="button" class="btn btn-primary" onclick="previewInvoice()">Preview Invoice</button>
-                    <button type="submit" class="btn btn-success">Send Invoice</button>
-                </div>
-            </form>
-
-            <!-- Preview Section -->
-            <div id="preview-section" class="mt-5 d-none invoice-preview">
-                <h3>Invoice Preview</h3>
-                <div class="preview-content" id="preview-content">
-                    <iframe id="pdf-preview-iframe" class="pdf-preview-iframe" width="100%" height="600px"></iframe>
-                </div>
-                <button type="button" class="btn btn-warning" onclick="goBackToEdit()">Go Back to Edit</button>
-                <button type="button" class="btn btn-success" onclick="submitInvoice()">Send Invoice</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- JavaScript -->
-    <script>
-        function addLineItem() {
-            const lineItemHTML = `
-                <div class="d-flex align-items-center mb-2">
-                    <input type="text" class="form-control me-2 item-description" placeholder="Item description" name="item_description[]">
-                    <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity" name="item_quantity[]" oninput="calculateTotal()">
-                    <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate" name="item_rate[]" oninput="calculateTotal()">
-                </div>`;
-            
-            document.getElementById('line-items-container').insertAdjacentHTML('beforeend', lineItemHTML);
-        }
-
-        function calculateTotal() {
-            let total = 0;
-            const quantities = document.querySelectorAll('.item-quantity');
-            const rates = document.querySelectorAll('.item-rate');
-
-            for (let i = 0; i < quantities.length; i++) {
-                const quantity = parseFloat(quantities[i].value) || 0;
-                const rate = parseFloat(rates[i].value) || 0;
-                total += quantity * rate;
+                    </div>`;
+                
+                document.getElementById('line-items-container').insertAdjacentHTML('beforeend', lineItemHTML);
             }
 
-            document.getElementById('invoice-total').innerText = total.toFixed(2);
-            document.getElementById('hiddenTotal').value = total.toFixed(2);
-        }
+            function calculateTotal() {
+                let total = 0;
+                const quantities = document.querySelectorAll('.item-quantity');
+                const rates = document.querySelectorAll('.item-rate');
 
-        function previewInvoice() {
-            // Perform a basic validation check to ensure the form is filled
-            const email = document.getElementById('recipientEmail').value;
-            const name = document.getElementById('recipientName').value;
-
-            if (!email || !name) {
-                alert("Please fill in the required fields before previewing the invoice.");
-                return;
-            }
-
-            // Get the form data
-            const formData = new FormData(document.getElementById('invoice-form'));
-
-            // Send the form data to the server to generate the PDF preview
-            fetch('/preview_invoice', {
-                method: 'POST',
-                body: formData,
-                credentials: 'include' // Include cookies in the request
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Error generating PDF');
+                for (let i = 0; i < quantities.length; i++) {
+                    const quantity = parseFloat(quantities[i].value) || 0;
+                    const rate = parseFloat(rates[i].value) || 0;
+                    total += quantity * rate;
                 }
-                return response.blob(); // Convert the response to a blob (PDF)
-            })
-            .then(blob => {
-                // Create a URL for the PDF blob
-                const pdfUrl = URL.createObjectURL(blob);
 
-                // Set the iframe source to the blob URL
-                const iframe = document.getElementById('pdf-preview-iframe');
-                iframe.src = pdfUrl;
+                document.getElementById('invoice-total').innerText = total.toFixed(2);
+                document.getElementById('hiddenTotal').value = total.toFixed(2);
+            }
 
-                // Hide the form and show the preview section
-                document.getElementById('invoice-form').classList.add('d-none');
-                document.getElementById('preview-section').classList.remove('d-none');
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while generating the preview. Please try again.');
-            });
-        }
+            function previewInvoice() {
+                // Perform a basic validation check to ensure the form is filled
+                const email = document.getElementById('recipientEmail').value;
+                const name = document.getElementById('recipientName').value;
 
-        function goBackToEdit() {
-            document.getElementById('invoice-form').classList.remove('d-none');
-            document.getElementById('preview-section').classList.add('d-none');
-        }
+                if (!email || !name) {
+                    alert("Please fill in the required fields before previewing the invoice.");
+                    return;
+                }
 
-        function submitInvoice() {
-            // Used for the button in the preview section
-            document.getElementById('invoice-form').submit();
-        }
-    </script>
-</body>
-</html>
+                // Get the form data
+                const formData = new FormData(document.getElementById('invoice-form'));
+
+                // Send the form data to the server to generate the PDF preview
+                fetch('/preview_invoice', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include' // Include cookies in the request
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error generating PDF');
+                    }
+                    return response.blob(); // Convert the response to a blob (PDF)
+                })
+                .then(blob => {
+                    // Create a URL for the PDF blob
+                    const pdfUrl = URL.createObjectURL(blob);
+
+                    // Set the iframe source to the blob URL
+                    const iframe = document.getElementById('pdf-preview-iframe');
+                    iframe.src = pdfUrl;
+
+                    // Hide the form and show the preview section
+                    document.getElementById('invoice-form').classList.add('d-none');
+                    document.getElementById('preview-section').classList.remove('d-none');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while generating the preview. Please try again.');
+                });
+            }
+
+            function goBackToEdit() {
+                document.getElementById('invoice-form').classList.remove('d-none');
+                document.getElementById('preview-section').classList.add('d-none');
+            }
+
+            function submitInvoice() {
+                // Used for the button in the preview section
+                document.getElementById('invoice-form').submit();
+            }
+        </script>
+
+<script>
+    function sendInvoice(event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        const formData = new FormData(document.getElementById('invoice-form'));
+
+        fetch('/send_invoice', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                // Show success popup with option to edit
+                showSuccessPopup(data.message);
+            } else {
+                alert(data.error || "An error occurred.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while sending the invoice.');
+        });
+    }
+
+    function showSuccessPopup(message) {
+        const popup = document.createElement('div');
+        popup.className = 'popup-overlay';
+        popup.innerHTML = `
+            <div class="popup-content">
+                <h3>${message}</h3>
+                <button onclick="goToOptions()">Go to Options</button>
+                <button onclick="closePopup()">Close</button>
+            </div>
+        `;
+        document.body.appendChild(popup);
+    }
+
+    function goToOptions() {
+        window.location.href = '/options';
+    }
+
+    function closePopup() {
+        document.querySelector('.popup-overlay').remove();
+    }
+</script>
+
+    </body>
+    </html>

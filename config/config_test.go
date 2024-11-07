@@ -1,16 +1,26 @@
 package config
 
-import "testing"
+import (
+	"os"
+	"testing"
+
+	"github.com/joho/godotenv"
+)
 
 func TestConnectDatabase(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		// TODO: Add test cases.
+	err := godotenv.Load("/workspaces/Invoicerator/.env.test")
+	if err != nil {
+		t.Fatalf("Failed to load .env.test: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ConnectDatabase()
-		})
+
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		t.Fatal("DATABASE_URL is not set in the environment")
+	}
+
+	ConnectDatabase()
+
+	if DB == nil {
+		t.Fatal("Database connection failed: DB object is nil")
 	}
 }

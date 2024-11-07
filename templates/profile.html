@@ -41,7 +41,8 @@
             <!-- Upload letterhead -->
             <div class="mb-3">
                 <label for="letterhead" class="form-label">Upload Company Letterhead:</label>
-                <input type="file" id="letterhead" name="letterhead" accept="image/*" class="form-control">
+                <input type="file" id="letterhead" name="letterhead" accept=".jpg, .jpeg" class="form-control">
+                <p class="mt-2 text-muted" style="font-size: 0.9em;">Only JPG and JPEG formats are allowed.</p>
                 {{if .User.LetterheadPath}}
                 <p class="mt-2">Current letterhead:</p>
                 <img src="{{.User.LetterheadPath}}" alt="Letterhead" class="img-thumbnail mt-2" style="max-height: 100px;">

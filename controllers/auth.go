@@ -88,9 +88,9 @@ func PerformSignup(c *gin.Context) {
 	}
 	config.DB.Create(&user)
 
-	// Set session cookie
+	// Set a session cookie and render the success dialog
 	c.SetCookie("session_token", username, 3600, "/", "localhost", false, true)
-	c.Redirect(http.StatusFound, "/profile")
+	c.HTML(http.StatusOK, "signup.html", gin.H{"Success": true})
 }
 
 func Logout(c *gin.Context) {

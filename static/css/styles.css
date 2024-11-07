@@ -186,8 +186,9 @@ h2 {
 }
 
 /* Alert Styles */
-.alert {
-    background-color: rgba(255, 255, 255, 0.1);
+.alert-success {
+    color: rgb(128, 255, 0);
+    background-color: rgba(255, 255, 255, 0.137);
     border: none;
 }
 
@@ -219,3 +220,106 @@ a:hover {
         width: 100%;
     }
 }
+
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.popup-content {
+    background: #333;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    color: #0bc9e5;
+    font-family: Arial, sans-serif;
+    width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transition: all 0.3s ease-in-out;
+}
+
+.popup-content h3 {
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.popup-content p {
+    font-size: 14px;
+    margin-bottom: 20px;
+    color: #ccc;
+}
+
+.popup-content button {
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.popup-content button:hover {
+    background-color: #0bb;
+}
+
+.popup-content button:first-child {
+    background: #0bc9e5;
+    color: #333;
+}
+
+.popup-content button:last-child {
+    background: #444;
+    color: #fff;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.text-muted {
+    color: #ffffff83 !important; /* or any other color that contrasts with the background */
+    font-size: 0.9em;
+}
+
+/* Ensure white placeholder text for all inputs on the entire site */
+input::placeholder,
+textarea::placeholder {
+    color: #ffffff6b !important; /* White color with higher specificity */
+    opacity: 1; /* Ensure full opacity */
+}
+
+input::-webkit-input-placeholder, 
+textarea::-webkit-input-placeholder {
+    color: #ffffff5b !important;
+}
+
+input::-moz-placeholder, 
+textarea::-moz-placeholder {
+    color: #ffffff5b !important;
+}
+
+input:-ms-input-placeholder, 
+textarea:-ms-input-placeholder {
+    color: #ffffff5b !important;
+}
+
+input:-moz-placeholder, 
+textarea:-moz-placeholder {
+    color: #ffffff5b !important;
+}
+
+input, textarea {
+    color: #ffffff !important; /* Ensures text color is white while typing */
+}
+

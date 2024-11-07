@@ -49,73 +49,78 @@ func main() {
 		//authorized.GET("/upload_pdf", controllers.ShowUploadPDFPage)
 		//authorized.POST("/upload_pdf", controllers.UploadPDF)
 		authorized.GET("/options", controllers.ShowOptionsPage)
+		authorized.GET("/edit_invoice", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "edit_invoice.html", nil)
+		})
+
+		// Handle invoice preview generation
+		router.POST("/preview_invoice", func(c *gin.Context) {
+			// Retrieve user info from session
+			username, err := c.Cookie("session_token")
+			if err != nil {
+				c.String(http.StatusUnauthorized, "Unauthorized")
+				return
+			}
+
+			var user models.User
+			if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
+				c.String(http.StatusInternalServerError, "User not found")
+				return
+			}
+
+			// Generate the PDF with user info and form data
+			pdfData, err := controllers.GenerateInvoicePDF(c, user, true) // Pass 'true' for preview mode
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Error generating PDF")
+				return
+			}
+
+			// Return the PDF for preview
+			c.Header("Content-Type", "application/pdf")
+			c.Header("Content-Disposition", "inline; filename=invoice_preview.pdf")
+			c.Writer.Write(pdfData)
+		})
+
+		// Handle final invoice creation and sending via SendGrid
+		router.POST("/send_invoice", func(c *gin.Context) {
+			// Retrieve user info from session
+			username, err := c.Cookie("session_token")
+			if err != nil {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+				return
+			}
+
+			var user models.User
+			if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+				return
+			}
+
+			// Generate the final PDF invoice
+			pdfData, err := controllers.GenerateInvoicePDF(c, user, false)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating PDF"})
+				return
+			}
+
+			// Send the invoice via SendGrid
+			recipientEmail := c.PostForm("email") // Client email from form
+			companyEmail := user.CompanyEmail     // Get company email from user profile
+
+			if err := controllers.SendInvoiceWithSendGrid(pdfData, recipientEmail, companyEmail); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invoice via email"})
+				return
+			}
+
+			// Send JSON response instead of plain text
+			c.JSON(http.StatusOK, gin.H{"message": "Invoice created and sent successfully"})
+		})
+
+		// Start server
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+		router.Run(":" + port)
 	}
-
-	// Handle invoice preview generation
-	router.POST("/preview_invoice", func(c *gin.Context) {
-		// Retrieve user info from session
-		username, err := c.Cookie("session_token")
-		if err != nil {
-			c.String(http.StatusUnauthorized, "Unauthorized")
-			return
-		}
-
-		var user models.User
-		if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
-			c.String(http.StatusInternalServerError, "User not found")
-			return
-		}
-
-		// Generate the PDF with user info and form data
-		pdfData, err := controllers.GenerateInvoicePDF(c, user, true) // Pass 'true' for preview mode
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Error generating PDF")
-			return
-		}
-
-		// Return the PDF for preview
-		c.Header("Content-Type", "application/pdf")
-		c.Header("Content-Disposition", "inline; filename=invoice_preview.pdf")
-		c.Writer.Write(pdfData)
-	})
-
-	// Handle final invoice creation and sending via SendGrid
-	router.POST("/send_invoice", func(c *gin.Context) {
-		// Retrieve user info from session
-		username, err := c.Cookie("session_token")
-		if err != nil {
-			c.String(http.StatusUnauthorized, "Unauthorized")
-			return
-		}
-
-		var user models.User
-		if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
-			c.String(http.StatusInternalServerError, "User not found")
-			return
-		}
-
-		// Generate the final PDF invoice
-		pdfData, err := controllers.GenerateInvoicePDF(c, user, false)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Error generating PDF")
-			return
-		}
-
-		// Send the invoice via SendGrid
-		recipientEmail := c.PostForm("email") // Client email from form
-		if err := controllers.SendInvoiceWithSendGrid(pdfData, recipientEmail); err != nil {
-			c.String(http.StatusInternalServerError, "Error sending invoice via email")
-			return
-		}
-
-		// Return success message
-		c.String(http.StatusOK, "Invoice created and sent successfully")
-	})
-
-	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	router.Run(":" + port)
 }

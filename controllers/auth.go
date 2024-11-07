@@ -6,6 +6,7 @@ import (
 	"invoicerator/models"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -89,7 +90,10 @@ func PerformSignup(c *gin.Context) {
 	config.DB.Create(&user)
 
 	// Set a session cookie and render the success dialog
-	c.SetCookie("session_token", username, 3600, "/", "localhost", false, true)
+	domain := os.Getenv("DOMAIN")
+	isSecure := os.Getenv("ENV") == "production"
+	
+	c.SetCookie("session_token", username, 3600, "/", domain, isSecure, true)
 	c.HTML(http.StatusOK, "signup.html", gin.H{"Success": true})
 }
 

@@ -5,7 +5,6 @@ import (
 	"invoicerator/controllers"
 	"invoicerator/middleware"
 	"invoicerator/models"
-	"log"
 	"net/http"
 	"os"
 
@@ -14,14 +13,22 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
+	// Determine which .env file to load
+	env := os.Getenv("ENV")
+	if env == "production" {
+		godotenv.Load(".env.production")
+	} else {
+		godotenv.Load(".env.local")
 	}
 	router := gin.Default()
 
-	// Set trusted proxies to nil
-	router.SetTrustedProxies(nil)
+	if env == "production" {
+		router.SetTrustedProxies([]string{"13.53.159.221"})
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		router.SetTrustedProxies(nil)
+		gin.SetMode(gin.DebugMode)
+	}
 
 	// Use the middleware from the middleware package
 	router.Use(middleware.SetUserStatus())

@@ -11,7 +11,7 @@ require (
 )
 
 require (
-	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/joho/godotenv v1.5.1
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 )
 

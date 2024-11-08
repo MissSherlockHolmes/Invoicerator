@@ -323,3 +323,32 @@ input, textarea {
     color: #ffffff !important; /* Ensures text color is white while typing */
 }
 
+/* General Styling for Google Translate */
+#translate-wrapper {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 999;
+}
+
+#google_translate_element select {
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+/* Mobile-Friendly Styling */
+@media (max-width: 768px) {
+    #translate-wrapper {
+        position: fixed;
+        top: 50px; /* Adjust below navbar height */
+        right: 10px;
+        z-index: 999;
+    }
+
+    /* Optional: Shrink the dropdown size */
+    #google_translate_element select {
+        font-size: 12px;
+        padding: 3px;
+    }
+}

@@ -223,8 +223,13 @@
             popup.innerHTML = `
             <div class="popup-content">
                 <h3>${message}</h3>
-                <button onclick="goToOptions()">Go to Options</button>
-                <button onclick="closePopup()">Close</button>
+                <div class="button-group">
+                    <button class="btn-options" onclick="goToOptions()">Go to Options</button>
+                    <button class="btn-logout" onclick="initialiseLogout()">Logout</button>
+                </div>
+                <div class="close-group">
+                    <button class="btn-close" onclick="closePopup()">Close</button>
+                </div>
             </div>
         `;
             document.body.appendChild(popup);
@@ -236,6 +241,10 @@
 
         function closePopup() {
             document.querySelector('.popup-overlay').remove();
+        }
+
+        function initialiseLogout() {
+            window.location.href = '/logout';
         }
     </script>
 

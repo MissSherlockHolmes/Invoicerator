@@ -104,6 +104,21 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 	pdf.SetFont("Arial", "B", 12)
 	pdf.Cell(40, 10, "Total Due: $"+totalDue)
 
+	// Add total due
+	pdf.Ln(10)
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(40, 10, "Total Due: $"+totalDue)
+
+	// Add Terms and Conditions section if they exist
+	if user.TermsConditions != "" {
+		pdf.Ln(20)
+		pdf.SetFont("Arial", "B", 10)
+		pdf.Cell(0, 10, "Terms and Conditions")
+		pdf.Ln(10)
+		pdf.SetFont("Arial", "", 9)
+		pdf.MultiCell(0, 5, user.TermsConditions, "", "", false)
+	}
+
 	// Output the PDF to memory (using a buffer instead of a file)
 	var buf bytes.Buffer
 	log.Printf("generating pdf..")

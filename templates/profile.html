@@ -11,16 +11,12 @@
     {{template "navbar"}}
     <div class="container mt-5">
         <h2 class="text-center mb-4">Profile Settings</h2>
-        
-        <!-- Display any success or error messages -->
         {{if .Success}}
-        <div class="alert alert-success">{{.Success}}</div>
+            <div class="alert alert-success">{{.Success}}</div>
         {{end}}
         {{if .Error}}
-        <div class="alert alert-danger">{{.Error}}</div>
+            <div class="alert alert-danger">{{.Error}}</div>
         {{end}}
-
-        <!-- Form for updating company information -->
         <form action="/profile" method="post" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="company_name" class="form-label">Company Name:</label>
@@ -29,7 +25,7 @@
             <div class="mb-3">
                 <label for="company_email" class="form-label">Company Email:</label>
                 <input type="email" id="company_email" name="company_email" class="form-control" value="{{.User.CompanyEmail}}" required>
-            </div>            
+            </div>
             <div class="mb-3">
                 <label for="company_address" class="form-label">Company Address:</label>
                 <textarea id="company_address" name="company_address" class="form-control" required>{{.User.CompanyAddress}}</textarea>
@@ -38,40 +34,29 @@
                 <label for="company_phone" class="form-label">Company Phone:</label>
                 <input type="text" id="company_phone" name="company_phone" class="form-control" value="{{.User.CompanyPhone}}" required>
             </div>
-            
-            <!-- Upload letterhead -->
             <div class="mb-3">
                 <label for="letterhead" class="form-label">Upload Company Letterhead:</label>
                 <input type="file" id="letterhead" name="letterhead" accept=".jpg, .jpeg" class="form-control">
                 <p class="mt-2 text-muted" style="font-size: 0.9em;">Only JPG and JPEG formats are allowed.</p>
                 {{if .User.LetterheadPath}}
-                <p class="mt-2">Current letterhead:</p>
-                <img src="{{.User.LetterheadPath}}" alt="Letterhead" class="img-thumbnail mt-2" style="max-height: 100px;">
+                    <p class="mt-2">Current letterhead:</p>
+                    <img src="{{.User.LetterheadPath}}" alt="Letterhead" class="img-thumbnail mt-2" style="max-height: 100px;">
                 {{end}}
             </div>
-            
-            <!-- Select fields to include on invoices -->
             <div class="mb-3">
-                <label class="form-label">Select Fields to Include on Invoices:</label>
-                {{range $index, $field := .AvailableFields}}
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="fields" value="{{$field}}" id="field{{$index}}" {{if (index $.SelectedFieldsMap $field)}}checked{{end}}>
-                    <label class="form-check-label" for="field{{$index}}">{{$field}}</label>
-                </div>
-                {{end}}
+                <label for="terms_conditions" class="form-label">Terms and Conditions:</label>
+                <textarea id="terms_conditions" name="terms_conditions" class="form-control" rows="6">{{.User.TermsConditions}}</textarea>
+                <p class="mt-2 text-muted" style="font-size: 0.9em;">These terms will appear on all invoices.</p>
             </div>
-            
             <div class="d-grid gap-2">
                 <button type="submit" class="btn btn-primary">Save Profile</button>
             </div>
         </form>
-        
         <div class="mt-4 d-flex justify-content-between">
             <a href="/create_invoice" class="btn btn-success">Create Invoice</a>
             <a href="/logout" class="btn btn-danger">Logout</a>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

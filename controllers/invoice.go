@@ -132,7 +132,7 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 	return buf.Bytes(), nil
 }
 
-func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string, companyEmail string) error {
+func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string, companyEmail string, companyName string) error {
 	// Log to check contents of recipientEmail
 	log.Printf("Recipient Email: %s", recipientEmail)
 
@@ -148,13 +148,24 @@ func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string, companyEmail
 		message.Personalizations[0].AddCCs(cc)
 	}
 
-	// Set the email sender, subject, and content
-	from := mail.NewEmail("Invoicerator Support", "no-reply@invoicerator.com")
-	subject := "Your Invoice from Invoicerator"
+	// Set the email sender and subject with company name
+	from := mail.NewEmail(companyName, "invoices@invoicerator.com")
+	subject := fmt.Sprintf("You have received an invoice from %s", companyName)
 	message.SetFrom(from)
 	message.Subject = subject
-	message.AddContent(mail.NewContent("text/plain", "Please find your invoice attached."))
-	message.AddContent(mail.NewContent("text/html", "<p>Thank you for your business!</p>"))
+
+	// Create a more professional email content
+	plainContent := fmt.Sprintf("You have received an invoice from %s. Please find it attached to this email.", companyName)
+	htmlContent := fmt.Sprintf(`
+        <div style="font-family: Arial, sans-serif; color: #333;">
+            <p>You have received an invoice from %s.</p>
+            <p>The invoice is attached to this email as a PDF document.</p>
+            <p>If you have any questions, please contact us directly.</p>
+        </div>
+    `, companyName)
+
+	message.AddContent(mail.NewContent("text/plain", plainContent))
+	message.AddContent(mail.NewContent("text/html", htmlContent))
 
 	// Add the PDF attachment
 	encodedPDF := base64.StdEncoding.EncodeToString(pdfData)
@@ -194,10 +205,9 @@ func CreateInvoice(c *gin.Context) {
 
 	// Get recipient email from form data
 	recipientEmail := c.PostForm("email") // Client email from form
-	companyEmail := user.CompanyEmail     // Get company email from user profile
-
+	
 	// Send the invoice via SendGrid
-	if err := SendInvoiceWithSendGrid(pdfData, recipientEmail, companyEmail); err != nil {
+	if err := SendInvoiceWithSendGrid(pdfData, recipientEmail, user.CompanyEmail, user.CompanyName); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invoice via email"})
 		return
 	}

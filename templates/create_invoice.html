@@ -13,7 +13,7 @@
             <h2 class="text-center">Create Invoice</h2>
             
             <!-- Form Section -->
-            <form id="invoice-form" class="row g-3" action="/send_invoice" method="POST">
+            <form id="invoice-form" class="row g-3" action="/send_invoice" method="POST onsubmit="sendInvoice(event)">
                 <!-- Recipient Information -->
                 <div class="col-md-6">
                     <label for="recipientEmail" class="form-label">Recipient Email:</label>
@@ -86,7 +86,7 @@
                     <iframe id="pdf-preview-iframe" class="pdf-preview-iframe" width="100%" height="600px"></iframe>
                 </div>
                 <button type="button" class="btn btn-warning" onclick="goBackToEdit()">Go Back to Edit</button>
-                <button type="button" class="btn btn-success" onclick="submitInvoice()">Send Invoice</button>
+                <button type="button" class="btn btn-success" onclick="sendInvoice(event)">Send Invoice</button>
             </div>
         </div>
     </div>

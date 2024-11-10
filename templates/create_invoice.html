@@ -1,22 +1,19 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Create Invoice</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-
 <body>
-    {{template "translator.html" .}}
     {{template "navbar"}}
     <div class="page-wrapper">
         <div class="container mt-5">
             <h2 class="text-center">Create Invoice</h2>
-
+            
             <!-- Form Section -->
-            <form id="invoice-form" class="row g-3" action="/send_invoice" method="POST" onsubmit="sendInvoice(event)">
+            <form id="invoice-form" class="row g-3" action="/send_invoice" method="POST">
                 <!-- Recipient Information -->
                 <div class="col-md-6">
                     <label for="recipientEmail" class="form-label">Recipient Email:</label>
@@ -30,8 +27,7 @@
 
                 <div class="col-md-6">
                     <label for="recipientContact" class="form-label">Client Contact Info:</label>
-                    <input type="text" class="form-control" id="recipientContact" name="contact_info"
-                        placeholder="address, phone" required>
+                    <input type="text" class="form-control" id="recipientContact" name="contact_info" placeholder="address, phone" required>
                 </div>
 
                 <div class="col-md-6">
@@ -42,8 +38,7 @@
                 <!-- Invoice Details -->
                 <div class="col-12">
                     <label for="terms" class="form-label">Terms/Details:</label>
-                    <textarea class="form-control" id="terms" name="invoice_data" rows="3"
-                        placeholder="Enter the details of the invoice here">{{.InvoiceData}}</textarea>
+                    <textarea class="form-control" id="terms" name="invoice_data" rows="3" placeholder="Enter the details of the invoice here">{{.InvoiceData}}</textarea>
                 </div>
 
                 <!-- Add Line Items -->
@@ -54,12 +49,9 @@
                 <!-- Line Items Container -->
                 <div id="line-items-container">
                     <div class="d-flex align-items-center mb-2">
-                        <input type="text" class="form-control me-2 item-description" placeholder="Item description"
-                            name="item_description[]">
-                        <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity"
-                            name="item_quantity[]" oninput="calculateTotal()">
-                        <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate"
-                            name="item_rate[]" oninput="calculateTotal()">
+                        <input type="text" class="form-control me-2 item-description" placeholder="Item description" name="item_description[]">
+                        <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity" name="item_quantity[]" oninput="calculateTotal()">
+                        <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate" name="item_rate[]" oninput="calculateTotal()">
                     </div>
                 </div>
 
@@ -72,8 +64,7 @@
                 <!-- Notes Section -->
                 <div class="col-12">
                     <label for="invoiceNotes" class="form-label">Notes:</label>
-                    <textarea class="form-control" id="invoiceNotes" name="notes" rows="3"
-                        placeholder="Add any notes or payment instructions"></textarea>
+                    <textarea class="form-control" id="invoiceNotes" name="notes" rows="3" placeholder="Add any notes or payment instructions"></textarea>
                 </div>
 
                 <!-- Display Total -->
@@ -95,23 +86,21 @@
                     <iframe id="pdf-preview-iframe" class="pdf-preview-iframe" width="100%" height="600px"></iframe>
                 </div>
                 <button type="button" class="btn btn-warning" onclick="goBackToEdit()">Go Back to Edit</button>
-                <button type="button" class="btn btn-success" onclick="sendInvoice(event)">Send Invoice</button>
+                <button type="button" class="btn btn-success" onclick="submitInvoice()">Send Invoice</button>
             </div>
         </div>
     </div>
 
-
     <!-- JavaScript -->
-
     <script>
         function addLineItem() {
             const lineItemHTML = `
-                    <div class="d-flex align-items-center mb-2">
-                        <input type="text" class="form-control me-2 item-description" placeholder="Item description" name="item_description[]">
-                        <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity" name="item_quantity[]" oninput="calculateTotal()">
-                        <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate" name="item_rate[]" oninput="calculateTotal()">
-                    </div>`;
-
+                <div class="d-flex align-items-center mb-2">
+                    <input type="text" class="form-control me-2 item-description" placeholder="Item description" name="item_description[]">
+                    <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity" name="item_quantity[]" oninput="calculateTotal()">
+                    <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate" name="item_rate[]" oninput="calculateTotal()">
+                </div>`;
+            
             document.getElementById('line-items-container').insertAdjacentHTML('beforeend', lineItemHTML);
         }
 
@@ -140,13 +129,6 @@
                 return;
             }
 
-            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailPattern.test(email)) {
-                alert("Please enter a valid email address.");
-                return; // Stop execution if email is invalid
-            }
-
-
             // Get the form data
             const formData = new FormData(document.getElementById('invoice-form'));
 
@@ -156,28 +138,28 @@
                 body: formData,
                 credentials: 'include' // Include cookies in the request
             })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Error generating PDF');
-                    }
-                    return response.blob(); // Convert the response to a blob (PDF)
-                })
-                .then(blob => {
-                    // Create a URL for the PDF blob
-                    const pdfUrl = URL.createObjectURL(blob);
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error generating PDF');
+                }
+                return response.blob(); // Convert the response to a blob (PDF)
+            })
+            .then(blob => {
+                // Create a URL for the PDF blob
+                const pdfUrl = URL.createObjectURL(blob);
 
-                    // Set the iframe source to the blob URL
-                    const iframe = document.getElementById('pdf-preview-iframe');
-                    iframe.src = pdfUrl;
+                // Set the iframe source to the blob URL
+                const iframe = document.getElementById('pdf-preview-iframe');
+                iframe.src = pdfUrl;
 
-                    // Hide the form and show the preview section
-                    document.getElementById('invoice-form').classList.add('d-none');
-                    document.getElementById('preview-section').classList.remove('d-none');
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while generating the preview. Please try again.');
-                });
+                // Hide the form and show the preview section
+                document.getElementById('invoice-form').classList.add('d-none');
+                document.getElementById('preview-section').classList.remove('d-none');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while generating the preview. Please try again.');
+            });
         }
 
         function goBackToEdit() {
@@ -252,5 +234,4 @@
 
 
 </body>
-
 </html>

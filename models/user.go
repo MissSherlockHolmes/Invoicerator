@@ -11,6 +11,7 @@ type User struct {
 	LetterheadPath        string
 	SelectedFields        string                 // JSON-encoded string
 	FinancialInstitutions []FinancialInstitution `gorm:"foreignKey:UserID"`
+	TermsConditions       string                 `gorm:"type:text"`
 }
 
 type FinancialInstitution struct {

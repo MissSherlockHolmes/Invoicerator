@@ -104,10 +104,6 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 	pdf.SetFont("Arial", "B", 12)
 	pdf.Cell(40, 10, "Total Due: $"+totalDue)
 
-	// Add total due
-	pdf.Ln(10)
-	pdf.SetFont("Arial", "B", 12)
-	pdf.Cell(40, 10, "Total Due: $"+totalDue)
 
 	// Add Terms and Conditions section if they exist
 	if user.TermsConditions != "" {
@@ -132,13 +128,11 @@ func GenerateInvoicePDF(c *gin.Context, user models.User, isPreview bool) ([]byt
 	return buf.Bytes(), nil
 }
 
-func SendInvoiceWithSendGrid(pdfData []byte, recipientEmail string, companyEmail string, companyName string) error {
-	// Log to check contents of recipientEmail
-	log.Printf("Recipient Email: %s", recipientEmail)
+func SendInvoiceWithSendGrid(pdfData []byte, recipientName string, recipientEmail string, companyEmail string, companyName string) error {
 
 	// Create the personalization object for the primary recipient
 	personalization := mail.NewPersonalization()
-	personalization.AddTos(mail.NewEmail("Client", recipientEmail)) // Primary recipient only
+	personalization.AddTos(mail.NewEmail(recipientName, recipientEmail)) // Primary recipient only
 
 	message := mail.NewV3Mail()
 	message.AddPersonalizations(personalization)
@@ -205,9 +199,10 @@ func CreateInvoice(c *gin.Context) {
 
 	// Get recipient email from form data
 	recipientEmail := c.PostForm("email") // Client email from form
-	
+	recipientName := c.PostForm("recipient_name")
+
 	// Send the invoice via SendGrid
-	if err := SendInvoiceWithSendGrid(pdfData, recipientEmail, user.CompanyEmail, user.CompanyName); err != nil {
+	if err := SendInvoiceWithSendGrid(pdfData, recipientName, recipientEmail, user.CompanyEmail, user.CompanyName); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error sending invoice via email"})
 		return
 	}

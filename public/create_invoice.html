@@ -242,7 +242,7 @@
             
             const emails = val.split(',').map(e => e.trim());
             // Updated regex to be more permissive with standard email formats
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
             
             const isValid = emails.every(email => emailRegex.test(email));
             
@@ -266,7 +266,7 @@
             }
             
             // Updated regex to be more permissive with standard email formats
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
             const isValid = emailRegex.test(val);
             
             if (isValid) {

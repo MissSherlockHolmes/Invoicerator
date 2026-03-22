@@ -2,6 +2,9 @@
   publish = "public"
   command = "echo 'No build command needed for static site'"
 
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SENDGRID_API_KEY"
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"

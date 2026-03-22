@@ -236,6 +236,7 @@
             const val = inputElement.value.trim();
             if (!val) {
                 inputElement.classList.remove('is-invalid');
+                inputElement.setCustomValidity('');
                 return true;
             }
             
@@ -247,8 +248,10 @@
             
             if (isValid) {
                 inputElement.classList.remove('is-invalid');
+                inputElement.setCustomValidity('');
             } else {
                 inputElement.classList.add('is-invalid');
+                inputElement.setCustomValidity('Please enter valid email addresses separated by commas.');
             }
             return isValid;
         }
@@ -258,6 +261,7 @@
             if (!val) {
                 // If it's empty, let the 'required' attribute handle it on submit
                 inputElement.classList.remove('is-invalid');
+                inputElement.setCustomValidity('');
                 return false;
             }
             
@@ -267,8 +271,10 @@
             
             if (isValid) {
                 inputElement.classList.remove('is-invalid');
+                inputElement.setCustomValidity('');
             } else {
                 inputElement.classList.add('is-invalid');
+                inputElement.setCustomValidity('Please enter a valid email address.');
             }
             return isValid;
         }
@@ -495,11 +501,17 @@
             e.preventDefault();
             
             // Final validation check before sending
-            const isRecipientValid = validateSingleEmail(document.getElementById('recipientEmail'));
-            const isCcValid = validateEmailList(document.getElementById('invoiceCcEmails'));
-            const isBccValid = validateEmailList(document.getElementById('invoiceBccEmails'));
+            const recipientInput = document.getElementById('recipientEmail');
+            const ccInput = document.getElementById('invoiceCcEmails');
+            const bccInput = document.getElementById('invoiceBccEmails');
+
+            const isRecipientValid = validateSingleEmail(recipientInput);
+            const isCcValid = validateEmailList(ccInput);
+            const isBccValid = validateEmailList(bccInput);
 
             if (!isRecipientValid || !isCcValid || !isBccValid) {
+                // If any are invalid, trigger the browser's native validation UI
+                document.getElementById('invoice-form').reportValidity();
                 return; // Stop if any email field is invalid
             }
 

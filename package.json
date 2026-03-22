@@ -1,0 +1,24 @@
+{
+  "name": "invoicerator",
+  "version": "1.0.0",
+  "description": "**Invoicerator**\r ================",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MissSherlockHolmes/Invoicerator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MissSherlockHolmes/Invoicerator/issues"
+  },
+  "homepage": "https://github.com/MissSherlockHolmes/Invoicerator#readme",
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
+    "@supabase/supabase-js": "^2.99.3"
+  }
+}

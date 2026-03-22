@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Invoice</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <div id="navbar-container"></div>
+    <div class="page-wrapper">
+        <div class="container mt-5">
+            <h2 class="text-center">Create Invoice</h2>
+            
+            <div id="error-message" class="alert alert-danger d-none"></div>
+            <div id="success-message" class="alert alert-success d-none"></div>
+            
+            <!-- Form Section -->
+            <form id="invoice-form" class="row g-3">
+                <!-- Recipient Information -->
+                <div class="col-md-6">
+                    <label for="recipientEmail" class="form-label">Recipient Email:</label>
+                    <input type="email" class="form-control" id="recipientEmail" name="email" required>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="recipientName" class="form-label">Recipient Name:</label>
+                    <input type="text" class="form-control" id="recipientName" name="recipient_name" required>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Client Address:</label>
+                    <input type="text" class="form-control mb-2" id="clientStreet" placeholder="Street Address" required>
+                    <div class="d-flex gap-2">
+                        <input type="text" class="form-control" id="clientCity" placeholder="City" required>
+                        <input type="text" class="form-control" id="clientState" placeholder="State" required>
+                        <input type="text" class="form-control" id="clientZip" placeholder="Zip" required>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="projectName" class="form-label">Project Title:</label>
+                    <input type="text" class="form-control" id="projectName" name="project_name" required>
+                </div>
+
+                <!-- Invoice Details -->
+                <div class="col-12">
+                    <label for="terms" class="form-label">Terms/Details:</label>
+                    <textarea class="form-control" id="terms" name="invoice_data" rows="3" placeholder="Enter the details of the invoice here"></textarea>
+                </div>
+
+                <!-- Add Line Items -->
+                <div class="col-12">
+                    <label class="form-label">Add Line Items:</label>
+                </div>
+
+                <!-- Line Items Container -->
+                <div id="line-items-container">
+                    <div class="d-flex align-items-center mb-2 line-item">
+                        <input type="text" class="form-control me-2 item-description" placeholder="Item description" name="item_description[]">
+                        <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity" name="item_quantity[]">
+                        <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate" name="item_rate[]">
+                    </div>
+                </div>
+
+                <div class="col-12 text-end">
+                    <button type="button" class="btn btn-primary" id="add-line-item-btn">+ Add Line Item</button>
+                </div>
+
+                <input type="hidden" id="hiddenTotal" name="total_due">
+
+                <!-- Notes Section -->
+                <div class="col-12">
+                    <label for="invoiceNotes" class="form-label">Notes:</label>
+                    <textarea class="form-control" id="invoiceNotes" name="notes" rows="3" placeholder="Add any notes or payment instructions"></textarea>
+                </div>
+
+                <!-- Display Total -->
+                <div class="col-12 text-end">
+                    <h4>Total: $<span id="invoice-total">0.00</span></h4>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="col-12 text-center">
+                    <button type="button" class="btn btn-success" id="preview-btn">Preview Invoice</button>
+                    <button type="submit" class="btn btn-success" id="send-btn">Send Invoice</button>
+                </div>
+            </form>
+
+            <!-- Preview Section -->
+            <div id="preview-section" class="mt-5 d-none invoice-preview">
+                <h3>Invoice Preview</h3>
+                <div class="preview-content" id="preview-content">
+                    <iframe id="pdf-preview-iframe" class="pdf-preview-iframe" width="100%" height="600px"></iframe>
+                </div>
+                <button type="button" class="btn btn-warning" id="go-back-btn">Go Back to Edit</button>
+                <button type="button" class="btn btn-success" id="send-from-preview-btn">Send Invoice</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { supabase } from '/js/supabase.js';
+        import { renderNavbar } from '/js/navbar.js';
+
+        let userProfile = null;
+        let pdfBlob = null;
+        let pdfBase64 = null;
+
+        async function init() {
+            await renderNavbar();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+            
+            userProfile = profile;
+            
+            if (profile && profile.terms_conditions) {
+                document.getElementById('terms').value = profile.terms_conditions;
+            }
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            const quantities = document.querySelectorAll('.item-quantity');
+            const rates = document.querySelectorAll('.item-rate');
+
+            for (let i = 0; i < quantities.length; i++) {
+                const quantity = parseFloat(quantities[i].value) || 0;
+                const rate = parseFloat(rates[i].value) || 0;
+                total += quantity * rate;
+            }
+
+            document.getElementById('invoice-total').innerText = total.toFixed(2);
+            document.getElementById('hiddenTotal').value = total.toFixed(2);
+        }
+
+        document.getElementById('add-line-item-btn').addEventListener('click', () => {
+            const lineItemHTML = `
+                <div class="d-flex align-items-center mb-2 line-item">
+                    <input type="text" class="form-control me-2 item-description" placeholder="Item description" name="item_description[]">
+                    <input type="number" class="form-control me-2 item-quantity" placeholder="Quantity" name="item_quantity[]">
+                    <input type="number" step="0.01" class="form-control me-2 item-rate" placeholder="Rate" name="item_rate[]">
+                </div>`;
+            
+            document.getElementById('line-items-container').insertAdjacentHTML('beforeend', lineItemHTML);
+            attachInputListeners();
+        });
+
+        function attachInputListeners() {
+            document.querySelectorAll('.item-quantity, .item-rate').forEach(input => {
+                input.removeEventListener('input', calculateTotal);
+                input.addEventListener('input', calculateTotal);
+            });
+        }
+
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const recipientEmail = document.getElementById('recipientEmail').value;
+            const recipientName = document.getElementById('recipientName').value;
+            
+            const clientStreet = document.getElementById('clientStreet').value;
+            const clientCity = document.getElementById('clientCity').value;
+            const clientState = document.getElementById('clientState').value;
+            const clientZip = document.getElementById('clientZip').value;
+            
+            const projectName = document.getElementById('projectName').value;
+            const terms = document.getElementById('terms').value;
+            const notes = document.getElementById('invoiceNotes').value;
+            const totalDue = document.getElementById('hiddenTotal').value;
+
+            let yPos = 20;
+
+            if (userProfile && userProfile.letterhead_url) {
+                try {
+                    // Try to load image
+                    const imgData = await getBase64ImageFromUrl(userProfile.letterhead_url);
+                    if (imgData) {
+                        doc.addImage(imgData, 'PNG', 10, 10, 50, 20);
+                        yPos = 40;
+                    }
+                } catch (e) {
+                    console.error("Could not load letterhead", e);
+                }
+            }
+
+            if (userProfile) {
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(12);
+                doc.text(userProfile.company_name || "Company Name", 10, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                
+                if (userProfile.company_address) {
+                    try {
+                        const addr = JSON.parse(userProfile.company_address);
+                        const addressLines = doc.splitTextToSize(`${addr.street}\n${addr.city}, ${addr.state} ${addr.zip}`, 100);
+                        doc.text(addressLines, 10, yPos);
+                        yPos += (addressLines.length * 5);
+                    } catch (e) {
+                        const addressLines = doc.splitTextToSize(userProfile.company_address, 100);
+                        doc.text(addressLines, 10, yPos);
+                        yPos += (addressLines.length * 5);
+                    }
+                }
+                
+                if (userProfile.company_phone) {
+                    doc.text("Phone: " + userProfile.company_phone, 10, yPos);
+                    yPos += 12;
+                } else {
+                    yPos += 6;
+                }
+            } else {
+                yPos += 12;
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.text("Bill To: " + recipientName, 10, yPos);
+            yPos += 6;
+            doc.setFont("helvetica", "normal");
+            doc.text("Email: " + recipientEmail, 10, yPos);
+            yPos += 6;
+            
+            const clientAddressLines = doc.splitTextToSize(`${clientStreet}\n${clientCity}, ${clientState} ${clientZip}`, 100);
+            doc.text(clientAddressLines, 10, yPos);
+            yPos += (clientAddressLines.length * 5);
+            
+            if (projectName) {
+                doc.text("Project: " + projectName, 10, yPos);
+                yPos += 6;
+            }
+            yPos += 6;
+
+            if (terms) {
+                const termsLines = doc.splitTextToSize(terms, 180);
+                doc.text(termsLines, 10, yPos);
+                yPos += (termsLines.length * 5) + 6;
+            }
+
+            const tableData = [];
+            const descriptions = document.querySelectorAll('.item-description');
+            const quantities = document.querySelectorAll('.item-quantity');
+            const rates = document.querySelectorAll('.item-rate');
+
+            for (let i = 0; i < descriptions.length; i++) {
+                const desc = descriptions[i].value;
+                const qty = parseFloat(quantities[i].value) || 0;
+                const rate = parseFloat(rates[i].value) || 0;
+                if (desc || qty || rate) {
+                    tableData.push([desc, qty.toFixed(2), rate.toFixed(2), (qty * rate).toFixed(2)]);
+                }
+            }
+
+            doc.autoTable({
+                startY: yPos,
+                head: [['Description', 'Qty', 'Rate', 'Amount']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [44, 44, 44] }
+            });
+
+            yPos = doc.lastAutoTable.finalY + 10;
+
+            if (notes) {
+                doc.setFont("helvetica", "italic");
+                const notesLines = doc.splitTextToSize(notes, 180);
+                doc.text(notesLines, 10, yPos);
+                yPos += (notesLines.length * 5) + 6;
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("Total Due: $" + totalDue, 10, yPos);
+
+            if (userProfile && userProfile.terms_conditions) {
+                yPos += 20;
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(10);
+                doc.text("Terms and Conditions", 10, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                const tcLines = doc.splitTextToSize(userProfile.terms_conditions, 180);
+                doc.text(tcLines, 10, yPos);
+            }
+
+            pdfBlob = doc.output('blob');
+            
+            // Convert to base64 properly for SendGrid
+            const pdfArrayBuffer = doc.output('arraybuffer');
+            const uint8Array = new Uint8Array(pdfArrayBuffer);
+            let binaryString = '';
+            for (let i = 0; i < uint8Array.byteLength; i++) {
+                binaryString += String.fromCharCode(uint8Array[i]);
+            }
+            pdfBase64 = btoa(binaryString);
+            
+            return pdfBlob;
+        }
+
+        async function getBase64ImageFromUrl(imageUrl) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const dataURL = canvas.toDataURL('image/png');
+                    resolve(dataURL);
+                };
+                img.onerror = error => reject(error);
+                img.src = imageUrl;
+            });
+        }
+
+        document.getElementById('preview-btn').addEventListener('click', async () => {
+            const email = document.getElementById('recipientEmail').value;
+            const name = document.getElementById('recipientName').value;
+
+            if (!email || !name) {
+                alert("Please fill in the required fields before previewing the invoice.");
+                return;
+            }
+
+            const blob = await generatePDF();
+            const pdfUrl = URL.createObjectURL(blob);
+            document.getElementById('pdf-preview-iframe').src = pdfUrl;
+            
+            document.getElementById('invoice-form').classList.add('d-none');
+            document.getElementById('preview-section').classList.remove('d-none');
+        });
+
+        document.getElementById('go-back-btn').addEventListener('click', () => {
+            document.getElementById('invoice-form').classList.remove('d-none');
+            document.getElementById('preview-section').classList.add('d-none');
+        });
+
+        async function handleSendInvoice(e) {
+            e.preventDefault();
+            
+            const btn1 = document.getElementById('send-btn');
+            const btn2 = document.getElementById('send-from-preview-btn');
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            
+            btn1.disabled = true;
+            btn2.disabled = true;
+            errorDiv.classList.add('d-none');
+            successDiv.classList.add('d-none');
+
+            try {
+                await generatePDF();
+
+                const payload = {
+                    recipientEmail: document.getElementById('recipientEmail').value,
+                    recipientName: document.getElementById('recipientName').value,
+                    companyEmail: userProfile?.company_email || '',
+                    companyName: userProfile?.company_name || 'Invoicerator User',
+                    pdfBase64: pdfBase64
+                };
+
+                const response = await fetch('/.netlify/functions/send-invoice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccessPopup("Invoice created and sent successfully");
+                } else {
+                    throw new Error(data.error || 'Failed to send invoice');
+                }
+            } catch (error) {
+                console.error(error);
+                errorDiv.textContent = error.message;
+                errorDiv.classList.remove('d-none');
+            } finally {
+                btn1.disabled = false;
+                btn2.disabled = false;
+            }
+        }
+
+        document.getElementById('invoice-form').addEventListener('submit', handleSendInvoice);
+        document.getElementById('send-from-preview-btn').addEventListener('click', handleSendInvoice);
+
+        function showSuccessPopup(message) {
+            const popup = document.createElement('div');
+            popup.className = 'popup-overlay';
+            popup.innerHTML = `
+            <div class="popup-content">
+                <h3>${message}</h3>
+                <div class="button-group">
+                    <button class="btn-options" onclick="window.location.href='/options.html'">Go to Options</button>
+                </div>
+                <div class="close-group">
+                    <button class="btn-close" onclick="this.closest('.popup-overlay').remove()">Close</button>
+                </div>
+            </div>
+            `;
+            document.body.appendChild(popup);
+        }
+
+        attachInputListeners();
+        init();
+    </script>
+</body>
+</html>

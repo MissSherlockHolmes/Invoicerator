@@ -5,3 +5,7 @@ invoicerator
 invoicerator.db
 uploads/
 static/uploads
+# Local Netlify folder
+.netlify
+node_modules/
+.env

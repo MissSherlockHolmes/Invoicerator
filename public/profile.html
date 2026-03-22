@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Profile - Invoicerator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+    <div id="navbar-container"></div>
+    
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Profile Settings</h2>
+        
+        <div id="success-message" class="alert alert-success d-none">Profile saved successfully.</div>
+        <div id="error-message" class="alert alert-danger d-none"></div>
+        
+        <form id="profile-form">
+            <div class="mb-3">
+                <label for="company_name" class="form-label">Company Name:</label>
+                <input type="text" id="company_name" name="company_name" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="company_email" class="form-label">Company Email:</label>
+                <input type="email" id="company_email" name="company_email" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Company Address:</label>
+                <input type="text" id="company_street" class="form-control mb-2" placeholder="Street Address" required>
+                <div class="row">
+                    <div class="col-md-5 mb-2">
+                        <input type="text" id="company_city" class="form-control" placeholder="City" required>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <input type="text" id="company_state" class="form-control" placeholder="State" required>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <input type="text" id="company_zip" class="form-control" placeholder="Zip" required>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="company_phone" class="form-label">Company Phone:</label>
+                <input type="text" id="company_phone" name="company_phone" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="letterhead" class="form-label">Upload Company Letterhead:</label>
+                <input type="file" id="letterhead" name="letterhead" accept=".jpg, .jpeg, .png" class="form-control">
+                <p class="mt-2 text-muted" style="font-size: 0.9em;">JPG, JPEG, and PNG formats are allowed.</p>
+                <div id="current-letterhead-container" class="d-none mt-2">
+                    <p class="mb-1">Current letterhead:</p>
+                    <div class="d-flex align-items-start gap-3">
+                        <img id="current-letterhead" src="" alt="Letterhead" class="img-thumbnail" style="max-height: 100px;">
+                        <button type="button" class="btn btn-danger btn-sm" id="remove-letterhead-btn">Remove Image</button>
+                    </div>
+                </div>
+                <!-- Hidden input to track if user wants to delete the image -->
+                <input type="hidden" id="delete_letterhead" value="false">
+            </div>
+            <div class="mb-3">
+                <label for="terms_conditions" class="form-label">Terms and Conditions:</label>
+                <textarea id="terms_conditions" name="terms_conditions" class="form-control" rows="6"></textarea>
+                <p class="mt-2 text-muted" style="font-size: 0.9em;">These terms will appear on all invoices.</p>
+            </div>
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary" id="save-btn">Save Profile</button>
+            </div>
+        </form>
+        <div class="mt-4 d-flex justify-content-between">
+            <a href="/create_invoice.html" class="btn btn-success">Create Invoice</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { supabase } from '/js/supabase.js';
+        import { renderNavbar } from '/js/navbar.js';
+
+        let userSession = null;
+
+        async function init() {
+            await renderNavbar();
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                window.location.href = '/login.html';
+                return;
+            }
+            userSession = session;
+
+            // Load profile data
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+            if (profile) {
+                document.getElementById('company_name').value = profile.company_name || '';
+                document.getElementById('company_email').value = profile.company_email || '';
+                if (profile.company_address) {
+                    try {
+                        const addr = JSON.parse(profile.company_address);
+                        document.getElementById('company_street').value = addr.street || '';
+                        document.getElementById('company_city').value = addr.city || '';
+                        document.getElementById('company_state').value = addr.state || '';
+                        document.getElementById('company_zip').value = addr.zip || '';
+                    } catch (e) {
+                        // Fallback if it was saved as a plain string before
+                        document.getElementById('company_street').value = profile.company_address;
+                    }
+                }
+                document.getElementById('company_phone').value = profile.company_phone || '';
+                document.getElementById('terms_conditions').value = profile.terms_conditions || '';
+
+                if (profile.letterhead_url) {
+                    const img = document.getElementById('current-letterhead');
+                    img.src = profile.letterhead_url;
+                    document.getElementById('current-letterhead-container').classList.remove('d-none');
+                }
+            }
+        }
+
+        document.getElementById('remove-letterhead-btn').addEventListener('click', () => {
+            document.getElementById('current-letterhead-container').classList.add('d-none');
+            document.getElementById('delete_letterhead').value = "true";
+            document.getElementById('letterhead').value = ""; // Clear file input if any
+        });
+
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('save-btn');
+            const successDiv = document.getElementById('success-message');
+            const errorDiv = document.getElementById('error-message');
+            
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            successDiv.classList.add('d-none');
+            errorDiv.classList.add('d-none');
+
+            const addressObj = {
+                street: document.getElementById('company_street').value,
+                city: document.getElementById('company_city').value,
+                state: document.getElementById('company_state').value,
+                zip: document.getElementById('company_zip').value
+            };
+
+            const updates = {
+                id: userSession.user.id,
+                company_name: document.getElementById('company_name').value,
+                company_email: document.getElementById('company_email').value,
+                company_address: JSON.stringify(addressObj),
+                company_phone: document.getElementById('company_phone').value,
+                terms_conditions: document.getElementById('terms_conditions').value,
+                updated_at: new Date()
+            };
+
+            // Check if user wants to delete the existing letterhead
+            if (document.getElementById('delete_letterhead').value === "true") {
+                updates.letterhead_url = null;
+            }
+
+            // Handle file upload
+            const fileInput = document.getElementById('letterhead');
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${userSession.user.id}-${Math.random()}.${fileExt}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('letterheads')
+                    .upload(fileName, file);
+
+                if (uploadError) {
+                    errorDiv.textContent = 'Error uploading letterhead: ' + uploadError.message;
+                    errorDiv.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.textContent = 'Save Profile';
+                    return;
+                }
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('letterheads')
+                    .getPublicUrl(fileName);
+
+                updates.letterhead_url = publicUrl;
+                
+                const img = document.getElementById('current-letterhead');
+                img.src = publicUrl;
+                document.getElementById('current-letterhead-container').classList.remove('d-none');
+                document.getElementById('delete_letterhead').value = "false"; // Reset delete flag
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .upsert(updates);
+
+            if (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.classList.remove('d-none');
+            } else {
+                successDiv.classList.remove('d-none');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Save Profile';
+        });
+
+        init();
+    </script>
+</body>
+</html>

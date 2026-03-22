@@ -1,0 +1,43 @@
+[build]
+  publish = "public"
+  command = "echo 'No build command needed for static site'"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/login"
+  to = "/login.html"
+  status = 200
+
+[[redirects]]
+  from = "/signup"
+  to = "/signup.html"
+  status = 200
+
+[[redirects]]
+  from = "/profile"
+  to = "/profile.html"
+  status = 200
+
+[[redirects]]
+  from = "/create_invoice"
+  to = "/create_invoice.html"
+  status = 200
+
+[[redirects]]
+  from = "/edit_invoice"
+  to = "/edit_invoice.html"
+  status = 200
+
+[[redirects]]
+  from = "/options"
+  to = "/options.html"
+  status = 200

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coming Soon</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/css/styles.css">
     <style>
         .coming-soon-wrapper {
             display: flex;
@@ -49,13 +49,17 @@
     </style>
 </head>
 <body>
-    {{template "translator.html" .}}
+    <div id="navbar-container"></div>
     <div class="coming-soon-wrapper">
         <div class="coming-soon-content">
             <h2>Coming Soon</h2>
             <p>We're working on this feature. Check back soon!</p>
-            <a href="/options" class="btn">Return to Options</a>
+            <a href="/options.html" class="btn">Return to Options</a>
         </div>
     </div>
+    <script type="module">
+        import { renderNavbar } from '/js/navbar.js';
+        renderNavbar();
+    </script>
 </body>
 </html>

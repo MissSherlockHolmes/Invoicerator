@@ -10,13 +10,13 @@ Check it out here: [Invoicerator.com](https://invoicerator.com/)
 **Features**
 ------------
 
--   **User Authentication**: Secure login and signup functionality with session management.
+-   **User Authentication**: Secure login and signup functionality with session management using Supabase.
 -   **Invoice Creation**: Generate professional invoices with customizable fields and line items.
--   **Invoice Preview**: Preview invoices before finalizing or sending them.
--   **PDF Generation**: Automatically create PDFs of invoices, including company letterhead and branding.
--   **Email Integration**: Send invoices directly via email using SendGrid.
+-   **Invoice Preview**: Preview invoices before finalizing or sending them directly in the browser.
+-   **PDF Generation**: Automatically create PDFs of invoices, including company letterhead and branding, completely client-side.
+-   **Email Integration**: Send invoices directly via email using SendGrid via Netlify Functions.
 -   **Profile Management**: Personalize company details, letterheads, and invoice settings.
--   **Secure Deletion**: Invoices are deleted immediately after being sent.
+-   **Secure Deletion**: Invoices are generated locally and sent via email, never stored on a server.
 
 * * * * *
 
@@ -26,9 +26,9 @@ Check it out here: [Invoicerator.com](https://invoicerator.com/)
 | **Category** | **Details** |
 | --- | --- |
 | **Primary Function** | Create, send, and manage invoices securely and efficiently. |
-| **Tech Stack** | Go (Gin Framework), SQLite, HTML/CSS, Bootstrap |
-| **Deployment** | Hosted on [AWS EC2](https://aws.amazon.com/ec2/) with NGINX and SSL (Let's Encrypt). |
-| **Database** | SQLite for simplicity and reliability. |
+| **Tech Stack** | HTML/CSS/JS, Supabase (Auth/DB/Storage), Netlify Functions (Node.js) |
+| **Deployment** | Hosted on [Netlify](https://www.netlify.com/). |
+| **Database** | Supabase PostgreSQL for user profiles and settings. |
 | **Target Audience** | Small businesses, freelancers, and professionals needing invoicing tools. |
 
 * * * * *
@@ -36,47 +36,45 @@ Check it out here: [Invoicerator.com](https://invoicerator.com/)
 **Setup and Installation**
 --------------------------
 
-### **1\. Prerequisites**
+### **1. Prerequisites**
 
--   Go v1.20 or higher
--   Git
--   SQLite
--   An AWS EC2 instance (or local server) for deployment
+-   Node.js and npm
+-   Netlify CLI (`npm install -g netlify-cli`)
+-   A Supabase account
+-   A SendGrid account
 
-### **2\. Clone the Repository**
-Copy code
-    
-    git clone https://github.com/<your-username>/Invoicerator.git
-    cd Invoicerator
-    
+### **2. Clone the Repository**
+```bash
+git clone https://github.com/<your-username>/Invoicerator.git
+cd Invoicerator
+```
 
-### **3\. Configure Environment Variables**
+### **3. Install Dependencies**
+```bash
+npm install
+```
 
-Create the following `.env` files:
+### **4. Configure Supabase**
+1. Create a new project in Supabase.
+2. Run the SQL commands in `supabase_schema.sql` in your Supabase SQL Editor to create the necessary tables and policies.
+3. Create a storage bucket named `letterheads` and make it public.
+4. Update `public/js/supabase.js` with your Supabase Project URL and Anon Key.
 
--   **Local Development (`.env.local`)**:
-    ```
-    ENV=local
-    DATABASE_URL=invoicerator.db
-    SENDGRID_API_KEY=<your-sendgrid-api-key>
-    ```
+### **5. Configure Environment Variables**
+Create a `.env` file in the root directory for Netlify Functions:
+```
+SENDGRID_API_KEY=<your-sendgrid-api-key>
+```
 
--   **Production (`.env.production`)**:
+### **6. Run the Application Locally**
 
-    ```
-    ENV=production
-    DATABASE_URL=/app/invoicerator.db
-    SENDGRID_API_KEY=<your-sendgrid-api-key>
-    ```
+```bash
+netlify dev
+```
 
-### **4\. Run the Application Locally**
-
-`go run main.go`
-
-The application will be available at `http://localhost:8080`.
+The application will be available at `http://localhost:8888`.
 
 * * * * *
-
 
 **Contributors**
 ----------------
@@ -85,21 +83,6 @@ The application will be available at `http://localhost:8080`.
 -   **Maksim Azarskov**
 -   **Sanskar Chaudhary**
 -   **Reika Yonetsu**
-
-* * * * *
-
-**Testing**
------------
-
-### **Unit and Integration Testing**
-
-The application includes unit tests to ensure its stability and functionality:
-
--   Unit tests for individual components.
-
-To run tests:
-
-`go test ./...`
 
 * * * * *
 

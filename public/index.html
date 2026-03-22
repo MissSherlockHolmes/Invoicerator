@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to Invoicerator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Include Bootstrap CSS -->
+    <link
+        rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+        crossorigin="anonymous"
+    />
+    <!-- Link to external styles.css -->
+    <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+    <div id="navbar-container"></div>
+    <div class="d-flex justify-content-center align-items-center min-vh-100">
+        <div class="text-center" id="content-area">
+            <!-- Content injected via JS based on auth state -->
+            <h2>Welcome to Invoicerator</h2>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from '/js/supabase.js';
+        import { renderNavbar } from '/js/navbar.js';
+
+        async function init() {
+            await renderNavbar();
+            const { data: { session } } = await supabase.auth.getSession();
+            const contentArea = document.getElementById('content-area');
+
+            if (session) {
+                // Try to get the company name from the profile, fallback to email
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('company_name')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+                
+                const displayName = (profile && profile.company_name) ? profile.company_name : session.user.email;
+
+                contentArea.innerHTML = `
+                    <h2>Welcome back, ${displayName}!</h2>
+                    <p style="font-size: 16px; color: lightgray;"> Invoicing made better, quicker, and maybe almost fun.</p>
+                    <a href="/options.html" class="btn btn-primary btn-block mb-3">Options</a>
+                    <button id="logout-btn-home" class="btn btn-danger btn-block mb-3">Logout</button>
+                `;
+                document.getElementById('logout-btn-home').addEventListener('click', async () => {
+                    await supabase.auth.signOut();
+                    window.location.reload();
+                });
+            } else {
+                contentArea.innerHTML = `
+                    <h2>Welcome to Invoicerator</h2>
+                    <p>Create and send invoices quickly and securely.</p>
+                    <a href="/login.html" class="btn btn-primary btn-block mb-3">Login</a>
+                    <a href="/signup.html" class="btn btn-success btn-block mb-3">Sign Up</a>
+                `;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

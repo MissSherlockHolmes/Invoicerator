@@ -6,12 +6,6 @@
     <title>Edit Invoice - Invoicerator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
-    <!-- Include PDF.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        // Set worker path
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
     <style>
         .upload-wrapper {
             background-color: rgba(0, 0, 0, 0.5);
@@ -82,17 +76,17 @@
     <!-- Required for mobile navbar collapse (hamburger) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
-        import { renderNavbar } from '/js/navbar.js';
-        import { supabase } from '/js/supabase.js';
+        import { extractTextFromPDF } from '/js/edit-invoice-pdf.js';
 
         async function init() {
+            const { renderNavbar } = await import('/js/navbar.js');
+            const { supabase } = await import('/js/supabase.js');
             await renderNavbar();
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
                 window.location.href = '/login.html';
             }
         }
-        init();
 
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
@@ -152,7 +146,8 @@
                 window.location.href = '/create_invoice.html';
             } catch (err) {
                 console.error(err);
-                showError('Failed to read the PDF. It might be corrupted or protected.');
+                const detail = err && err.message ? ` ${err.message}` : '';
+                showError('Failed to read the PDF. It might be corrupted, protected, or blocked by a network filter.' + detail);
                 loadingSpinner.style.display = 'none';
                 uploadBtn.style.display = 'inline-block';
             }
@@ -161,40 +156,6 @@
         function showError(msg) {
             errorDiv.textContent = msg;
             errorDiv.classList.remove('d-none');
-        }
-
-        function getPdfJs() {
-            // Classic script sets window.pdfjsLib; ES modules do NOT see bare `pdfjsLib` as a global.
-            const lib = globalThis.pdfjsLib;
-            if (!lib || typeof lib.getDocument !== 'function') {
-                throw new Error('PDF engine failed to load. Try refreshing the page.');
-            }
-            return lib;
-        }
-
-        async function extractTextFromPDF(arrayBuffer) {
-            const pdfjsLib = getPdfJs();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-            let fullText = '';
-            
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                
-                let text = '';
-                for (const item of textContent.items) {
-                    text += item.str;
-                    if (item.hasEOL) {
-                        text += '\n';
-                    } else {
-                        text += ' ';
-                    }
-                }
-                
-                fullText += text + '\n';
-            }
-            
-            return fullText;
         }
 
         function parseInvoiceText(text) {
@@ -279,6 +240,8 @@
 
             return data;
         }
+
+        init();
     </script>
 </body>
 </html>

@@ -129,6 +129,7 @@
     <script type="module">
         import { supabase } from '/js/supabase.js';
         import { renderNavbar } from '/js/navbar.js';
+        import { normId } from '/js/team-id.js';
 
         let userProfile = null;
         let pdfBlob = null;
@@ -150,12 +151,13 @@
             let profile = null;
             if (teamMembers && teamMembers.length > 0) {
                 let activeId = localStorage.getItem('activeTeamId');
-                let activeTeam = teamMembers.find(tm => tm.team_id === activeId);
+                let activeTeam = teamMembers.find(tm => normId(tm.team_id) === normId(activeId));
                 if (!activeTeam) {
                     activeTeam = teamMembers[0];
-                    localStorage.setItem('activeTeamId', activeTeam.team_id);
+                    localStorage.setItem('activeTeamId', String(activeTeam.team_id));
                 }
-                profile = activeTeam.teams;
+                const t = activeTeam.teams;
+                profile = Array.isArray(t) ? t[0] : t;
             }
             
             userProfile = profile;

@@ -167,6 +167,7 @@
     <script type="module">
         import { supabase } from '/js/supabase.js';
         import { renderNavbar } from '/js/navbar.js';
+        import { normId } from '/js/team-id.js';
 
         let userSession = null;
         let currentTeamId = null;
@@ -175,6 +176,11 @@
         let cachedIAmLead = false;
 
         const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        function teamById(id) {
+            const n = normId(id);
+            return allTeams.find(t => t && normId(t.id) === n) || null;
+        }
 
         /**
          * Prefer teams.created_by. If missing (legacy / failed RPC), treat sole member as creator
@@ -186,7 +192,7 @@
             if (!leadId && list.length === 1 && list[0].user_id) {
                 leadId = list[0].user_id;
             }
-            const iAmLead = !!(leadId && userSession.user.id === leadId);
+            const iAmLead = !!(leadId && normId(userSession.user.id) === normId(leadId));
             return { leadId, iAmLead };
         }
 
@@ -234,15 +240,17 @@
         /** Which team row to save: dropdown is source of truth (stays in sync with DB). */
         function getSaveTeamId() {
             const sel = document.getElementById('team-selector');
-            const fromSel = sel && sel.value ? String(sel.value) : '';
-            if (fromSel && allTeams.some(t => t && String(t.id) === fromSel)) {
-                return fromSel;
+            const fromSel = sel && sel.value ? normId(sel.value) : '';
+            if (fromSel) {
+                const row = teamById(fromSel);
+                if (row) return row.id;
             }
-            if (currentTeamId && allTeams.some(t => t && String(t.id) === String(currentTeamId))) {
-                return String(currentTeamId);
+            if (currentTeamId) {
+                const row = teamById(currentTeamId);
+                if (row) return row.id;
             }
             const first = allTeams.find(t => t && t.id);
-            return first ? String(first.id) : null;
+            return first ? first.id : null;
         }
 
         async function loadTeams() {
@@ -265,14 +273,28 @@
                         return t;
                     })
                     .filter(Boolean);
+
+                // Dedupe by id (safety) and stable order: oldest team first (matches "created first" expectation)
+                const seen = new Set();
+                allTeams = allTeams.filter((t) => {
+                    const k = normId(t.id);
+                    if (!k || seen.has(k)) return false;
+                    seen.add(k);
+                    return true;
+                });
+                allTeams.sort((a, b) => {
+                    const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+                    const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+                    return ta - tb;
+                });
                 
-                // Determine active team
+                // Determine active team (compare UUIDs case-insensitively)
                 let activeId = localStorage.getItem('activeTeamId');
-                let activeTeam = allTeams.find(t => t.id === activeId);
+                let activeTeam = activeId ? teamById(activeId) : null;
                 
                 if (!activeTeam) {
                     activeTeam = allTeams[0];
-                    localStorage.setItem('activeTeamId', activeTeam.id);
+                    localStorage.setItem('activeTeamId', String(activeTeam.id));
                 }
 
                 currentTeamId = String(activeTeam.id);
@@ -297,11 +319,21 @@
             selector.innerHTML = '';
             allTeams.forEach(team => {
                 const opt = document.createElement('option');
-                opt.value = team.id;
+                opt.value = String(team.id);
                 opt.textContent = team.company_name || 'Unnamed Team';
-                if (team.id === currentTeamId) opt.selected = true;
                 selector.appendChild(opt);
             });
+
+            // Force selection by value — avoids missed match when === fails across types/casing
+            const cur = teamById(currentTeamId);
+            if (cur) {
+                selector.value = String(cur.id);
+                currentTeamId = String(cur.id);
+            } else if (allTeams[0]) {
+                selector.value = String(allTeams[0].id);
+                currentTeamId = String(allTeams[0].id);
+                localStorage.setItem('activeTeamId', currentTeamId);
+            }
 
             container.classList.remove('d-none');
 
@@ -311,7 +343,9 @@
         }
 
         function handleTeamSwitch(e) {
-            const newTeamId = String(e.target.value);
+            const raw = e.target.value;
+            const picked = teamById(raw);
+            const newTeamId = picked ? String(picked.id) : String(raw);
             localStorage.setItem('activeTeamId', newTeamId);
             currentTeamId = newTeamId;
             window.location.reload(); // Reload to cleanly reset state and form
@@ -330,7 +364,7 @@
                 if (createError) throw createError;
 
                 // Set as active and reload
-                localStorage.setItem('activeTeamId', newTeamId);
+                localStorage.setItem('activeTeamId', String(newTeamId));
                 window.location.reload();
             } catch (err) {
                 console.error(err);
@@ -382,8 +416,8 @@
 
                 list.innerHTML = '';
 
-                const teamMeta = allTeams.find(t => t.id === teamId);
-                const { leadId, iAmLead } = resolveLeadContext(teamMeta, members);
+                const teamMeta = teamById(teamId);
+                const { leadId, iAmLead } = resolveLeadContext(teamMeta || {}, members);
                 cachedIAmLead = iAmLead;
                 applyInviteLeadUi(iAmLead);
                 const delTeamBtn = document.getElementById('delete-team-btn');
@@ -391,8 +425,8 @@
                 
                 // Render active members
                 members.forEach(member => {
-                    const isMe = member.user_id === userSession.user.id;
-                    const isTeamLead = leadId && member.user_id === leadId;
+                    const isMe = normId(member.user_id) === normId(userSession.user.id);
+                    const isTeamLead = !!(leadId && normId(member.user_id) === normId(leadId));
                     const li = document.createElement('li');
                     li.className = 'list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center';
                     
@@ -848,7 +882,7 @@
                 errorDiv.textContent = 'Could not save profile (no rows updated). You may not have access to this team — try refreshing.';
                 errorDiv.classList.remove('d-none');
             } else {
-                const ix = allTeams.findIndex(t => t && String(t.id) === saveTeamId);
+                const ix = allTeams.findIndex(t => t && normId(t.id) === normId(saveTeamId));
                 if (ix >= 0) {
                     allTeams[ix] = { ...allTeams[ix], ...updates };
                 }

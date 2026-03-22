@@ -122,9 +122,15 @@
             }
         });
 
+        function isPdfFile(file) {
+            const name = (file && file.name) ? file.name.toLowerCase() : '';
+            const t = (file && file.type) ? file.type.toLowerCase() : '';
+            return t === 'application/pdf' || t === 'application/x-pdf' || name.endsWith('.pdf');
+        }
+
         async function handleFile(file) {
-            if (file.type !== 'application/pdf') {
-                showError('Please upload a valid PDF file.');
+            if (!isPdfFile(file)) {
+                showError('Please upload a valid PDF file (.pdf).');
                 return;
             }
 
@@ -155,8 +161,18 @@
             errorDiv.classList.remove('d-none');
         }
 
+        function getPdfJs() {
+            // Classic script sets window.pdfjsLib; ES modules do NOT see bare `pdfjsLib` as a global.
+            const lib = globalThis.pdfjsLib;
+            if (!lib || typeof lib.getDocument !== 'function') {
+                throw new Error('PDF engine failed to load. Try refreshing the page.');
+            }
+            return lib;
+        }
+
         async function extractTextFromPDF(arrayBuffer) {
-            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            const pdfjsLib = getPdfJs();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
             
             for (let i = 1; i <= pdf.numPages; i++) {

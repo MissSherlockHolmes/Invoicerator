@@ -212,24 +212,15 @@
             if (!name) return;
 
             try {
-                // Create team
-                const { data: newTeam, error: createError } = await supabase
-                    .from('teams')
-                    .insert([{ company_name: name }])
-                    .select()
-                    .single();
+                // Call the secure RPC function to create the team and add the user simultaneously
+                const { data: newTeamId, error: createError } = await supabase.rpc('create_new_team', {
+                    new_company_name: name
+                });
                 
                 if (createError) throw createError;
 
-                // Add user to team
-                const { error: memberError } = await supabase
-                    .from('team_members')
-                    .insert([{ team_id: newTeam.id, user_id: userSession.user.id }]);
-                
-                if (memberError) throw memberError;
-
                 // Set as active and reload
-                localStorage.setItem('activeTeamId', newTeam.id);
+                localStorage.setItem('activeTeamId', newTeamId);
                 window.location.reload();
             } catch (err) {
                 console.error(err);

@@ -3,7 +3,7 @@
   command = "echo 'No build command needed for static site'"
 
 [build.environment]
-  SECRETS_SCAN_OMIT_KEYS = "SENDGRID_API_KEY"
+  SECRETS_SCAN_OMIT_KEYS = "SENDGRID_API_KEY,SENDER_EMAIL"
 
 [functions]
   directory = "netlify/functions"

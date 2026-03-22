@@ -20,6 +20,7 @@
                         <select id="team-selector" class="form-select w-auto bg-dark text-light border-secondary"></select>
                     </div>
                     <button id="create-new-team-btn" class="btn btn-outline-success btn-sm">Create New Team</button>
+                    <button type="button" id="delete-team-btn" class="btn btn-outline-danger btn-sm d-none" title="Permanently delete this team">Delete team</button>
                 </div>
             </div>
         </div>
@@ -170,10 +171,26 @@
         let userSession = null;
         let currentTeamId = null;
         let allTeams = [];
+        /** Set when members list loads; used for invite form guard */
+        let cachedIAmLead = false;
 
         const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        function syncTeamLeadUi() {
+        /**
+         * Prefer teams.created_by. If missing (legacy / failed RPC), treat sole member as creator
+         * so a team you just created still shows you as lead in the UI.
+         */
+        function resolveLeadContext(teamMeta, memberRows) {
+            let leadId = teamMeta?.created_by || null;
+            const list = Array.isArray(memberRows) ? memberRows : [];
+            if (!leadId && list.length === 1 && list[0].user_id) {
+                leadId = list[0].user_id;
+            }
+            const iAmLead = !!(leadId && userSession.user.id === leadId);
+            return { leadId, iAmLead };
+        }
+
+        function applyInviteLeadUi(iAmLead) {
             const formSection = document.getElementById('invite-form-section');
             const notice = document.getElementById('invite-lead-only-notice');
             if (!formSection || !notice) return;
@@ -182,9 +199,6 @@
                 notice.classList.add('d-none');
                 return;
             }
-            const team = allTeams.find(t => t.id === currentTeamId);
-            const leadId = team?.created_by || null;
-            const iAmLead = !!(leadId && userSession.user.id === leadId);
             if (iAmLead) {
                 formSection.classList.remove('d-none');
                 notice.classList.add('d-none');
@@ -217,6 +231,20 @@
             });
         }
 
+        /** Which team row to save: dropdown is source of truth (stays in sync with DB). */
+        function getSaveTeamId() {
+            const sel = document.getElementById('team-selector');
+            const fromSel = sel && sel.value ? String(sel.value) : '';
+            if (fromSel && allTeams.some(t => t && String(t.id) === fromSel)) {
+                return fromSel;
+            }
+            if (currentTeamId && allTeams.some(t => t && String(t.id) === String(currentTeamId))) {
+                return String(currentTeamId);
+            }
+            const first = allTeams.find(t => t && t.id);
+            return first ? String(first.id) : null;
+        }
+
         async function loadTeams() {
             // Load all teams the user belongs to
             const { data: teamMembers, error: tmError } = await supabase
@@ -230,7 +258,13 @@
             }
 
             if (teamMembers && teamMembers.length > 0) {
-                allTeams = teamMembers.map(tm => tm.teams);
+                allTeams = teamMembers
+                    .map(tm => {
+                        const t = tm.teams;
+                        if (Array.isArray(t)) return t[0] || null;
+                        return t;
+                    })
+                    .filter(Boolean);
                 
                 // Determine active team
                 let activeId = localStorage.getItem('activeTeamId');
@@ -241,18 +275,18 @@
                     localStorage.setItem('activeTeamId', activeTeam.id);
                 }
 
-                currentTeamId = activeTeam.id;
+                currentTeamId = String(activeTeam.id);
                 
                 // Setup UI
                 setupTeamSelector();
                 populateForm(activeTeam);
-                syncTeamLeadUi();
-                loadTeamMembers(activeTeam.id);
+                await loadTeamMembers(currentTeamId);
             } else {
                 // User has no teams (should be rare due to trigger, but possible)
                 currentTeamId = null;
+                cachedIAmLead = false;
                 document.getElementById('team-selector-container').classList.add('d-none');
-                syncTeamLeadUi();
+                applyInviteLeadUi(false);
             }
         }
 
@@ -277,8 +311,9 @@
         }
 
         function handleTeamSwitch(e) {
-            const newTeamId = e.target.value;
+            const newTeamId = String(e.target.value);
             localStorage.setItem('activeTeamId', newTeamId);
+            currentTeamId = newTeamId;
             window.location.reload(); // Reload to cleanly reset state and form
         }
 
@@ -303,6 +338,30 @@
             }
         });
 
+        document.getElementById('delete-team-btn').addEventListener('click', async () => {
+            if (!cachedIAmLead || !currentTeamId) return;
+            const sel = document.getElementById('team-selector');
+            const teamName = sel?.selectedOptions[0]?.textContent?.trim() || 'this team';
+            const ok = confirm(
+                `Delete "${teamName}" permanently?\n\n` +
+                'This cannot be undone. All members will lose access to this team and its company profile data.'
+            );
+            if (!ok) return;
+
+            const btn = document.getElementById('delete-team-btn');
+            btn.disabled = true;
+            try {
+                const { error } = await supabase.rpc('delete_team_for_lead', { p_team_id: currentTeamId });
+                if (error) throw error;
+                localStorage.removeItem('activeTeamId');
+                window.location.reload();
+            } catch (err) {
+                console.error(err);
+                alert(err.message || 'Failed to delete team.');
+                btn.disabled = false;
+            }
+        });
+
         async function loadTeamMembers(teamId) {
             const list = document.getElementById('members-list');
             try {
@@ -324,8 +383,11 @@
                 list.innerHTML = '';
 
                 const teamMeta = allTeams.find(t => t.id === teamId);
-                const leadId = teamMeta?.created_by || null;
-                const iAmLead = leadId && userSession.user.id === leadId;
+                const { leadId, iAmLead } = resolveLeadContext(teamMeta, members);
+                cachedIAmLead = iAmLead;
+                applyInviteLeadUi(iAmLead);
+                const delTeamBtn = document.getElementById('delete-team-btn');
+                if (delTeamBtn) delTeamBtn.classList.toggle('d-none', !iAmLead);
                 
                 // Render active members
                 members.forEach(member => {
@@ -434,6 +496,10 @@
 
             } catch (err) {
                 console.error(err);
+                cachedIAmLead = false;
+                applyInviteLeadUi(false);
+                const delTeamBtn = document.getElementById('delete-team-btn');
+                if (delTeamBtn) delTeamBtn.classList.add('d-none');
                 list.innerHTML = `<li class="list-group-item bg-dark text-danger border-secondary">Failed to load members.</li>`;
             }
         }
@@ -473,10 +539,7 @@
             const btn = document.getElementById('send-invite-btn');
             const msgDiv = document.getElementById('invite-message');
 
-            const team = allTeams.find(t => t.id === currentTeamId);
-            const leadId = team?.created_by || null;
-            const iAmLead = !!(leadId && userSession.user.id === leadId);
-            if (!iAmLead) {
+            if (!cachedIAmLead) {
                 msgDiv.className = 'alert alert-danger';
                 msgDiv.textContent = 'Only the team lead can send invitations for this team.';
                 msgDiv.classList.remove('d-none');
@@ -677,8 +740,10 @@
             successDiv.classList.add('d-none');
             errorDiv.classList.add('d-none');
 
-            if (!currentTeamId) {
-                // Create a new team if one doesn't exist (caller is team lead)
+            let saveTeamId = getSaveTeamId();
+
+            // Only create a brand-new team when the user has no teams at all
+            if (!saveTeamId && (!allTeams || allTeams.length === 0)) {
                 const { data: newTeam, error: createError } = await supabase
                     .from('teams')
                     .insert([{
@@ -696,13 +761,26 @@
                     return;
                 }
 
-                currentTeamId = newTeam.id;
+                saveTeamId = String(newTeam.id);
+                currentTeamId = saveTeamId;
 
-                // Add user to the new team
                 await supabase
                     .from('team_members')
-                    .insert([{ team_id: currentTeamId, user_id: userSession.user.id }]);
+                    .insert([{ team_id: saveTeamId, user_id: userSession.user.id }]);
+
+                allTeams = [newTeam];
+                setupTeamSelector();
             }
+
+            if (!saveTeamId) {
+                errorDiv.textContent = 'No team selected. Try refreshing the page.';
+                errorDiv.classList.remove('d-none');
+                btn.disabled = false;
+                btn.textContent = 'Save Profile';
+                return;
+            }
+
+            currentTeamId = saveTeamId;
 
             const addressObj = {
                 street: document.getElementById('company_street').value,
@@ -718,7 +796,7 @@
                 company_address: JSON.stringify(addressObj),
                 company_phone: document.getElementById('company_phone').value,
                 terms_conditions: document.getElementById('terms_conditions').value,
-                updated_at: new Date()
+                updated_at: new Date().toISOString()
             };
 
             // Check if user wants to delete the existing letterhead
@@ -731,7 +809,7 @@
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
                 const fileExt = file.name.split('.').pop();
-                const fileName = `team-${currentTeamId}-${Math.random()}.${fileExt}`;
+                const fileName = `team-${saveTeamId}-${Math.random()}.${fileExt}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('letterheads')
@@ -757,15 +835,23 @@
                 document.getElementById('delete_letterhead').value = "false"; // Reset delete flag
             }
 
-            const { error } = await supabase
+            const { data: updatedRows, error } = await supabase
                 .from('teams')
                 .update(updates)
-                .eq('id', currentTeamId);
+                .eq('id', saveTeamId)
+                .select('id');
 
             if (error) {
                 errorDiv.textContent = error.message;
                 errorDiv.classList.remove('d-none');
+            } else if (!updatedRows || updatedRows.length === 0) {
+                errorDiv.textContent = 'Could not save profile (no rows updated). You may not have access to this team — try refreshing.';
+                errorDiv.classList.remove('d-none');
             } else {
+                const ix = allTeams.findIndex(t => t && String(t.id) === saveTeamId);
+                if (ix >= 0) {
+                    allTeams[ix] = { ...allTeams[ix], ...updates };
+                }
                 successDiv.classList.remove('d-none');
             }
 

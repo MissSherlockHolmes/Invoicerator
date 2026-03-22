@@ -18,16 +18,30 @@ BEGIN
 END;
 $$;
 
--- 2. Function to remove a team member securely
+-- 2. Function to remove a team member securely (team lead only)
 CREATE OR REPLACE FUNCTION remove_team_member(p_team_id UUID, p_user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+DECLARE
+  lead_id UUID;
 BEGIN
-  -- Check if calling user is part of the team (basic authorization)
+  -- Caller must be a member
   IF NOT EXISTS (SELECT 1 FROM team_members WHERE team_id = p_team_id AND team_members.user_id = auth.uid()) THEN
     RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  SELECT created_by INTO lead_id FROM public.teams WHERE id = p_team_id;
+
+  -- Only the user who created the team may remove others
+  IF lead_id IS NULL OR auth.uid() <> lead_id THEN
+    RAISE EXCEPTION 'Only the team lead can remove members';
+  END IF;
+
+  -- Cannot remove the team lead
+  IF p_user_id = lead_id THEN
+    RAISE EXCEPTION 'Cannot remove the team lead';
   END IF;
 
   -- Prevent removing the last member of the team (optional, but good practice)

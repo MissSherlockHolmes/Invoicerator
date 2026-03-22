@@ -20,8 +20,8 @@ BEGIN
 
   -- 2. If they had no invites, create a default blank team for them
   IF NOT has_invites THEN
-    INSERT INTO public.teams (company_name)
-    VALUES (NULL)
+    INSERT INTO public.teams (company_name, created_by)
+    VALUES (NULL, new.id)
     RETURNING id INTO new_team_id;
 
     INSERT INTO public.team_members (team_id, user_id)

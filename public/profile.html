@@ -92,7 +92,12 @@
             <div class="card-body">
                 <h5 class="card-title text-info">Invite Team Members</h5>
                 <p class="card-text text-muted">Send an email invitation to authorize a new member to join your company profile and create invoices.</p>
+
+                <div id="invite-lead-only-notice" class="alert alert-secondary d-none border-secondary">
+                    Only the <strong>team lead</strong> (the person who created this team) can send or resend invitations for this team.
+                </div>
                 
+                <div id="invite-form-section">
                 <div id="invite-message" class="alert d-none"></div>
 
                 <form id="invite-form" class="mt-3">
@@ -101,6 +106,7 @@
                         <button class="btn btn-outline-info" type="submit" id="send-invite-btn">Send Invite</button>
                     </div>
                 </form>
+                </div>
 
                 <div class="mt-4">
                     <h6 class="text-info mb-3">Current Members & Pending Invites</h6>
@@ -116,6 +122,25 @@
         <h3 class="text-center mb-4">Account Settings</h3>
         <div class="card bg-dark text-light mb-5" style="border: 1px solid rgba(255,255,255,0.2);">
             <div class="card-body">
+                <h5 class="card-title text-info">Login email</h5>
+                <p class="mb-1 text-muted small">This is the address you use to sign in (not the company email on invoices).</p>
+                <p class="fw-semibold text-light mb-4" id="account-email-display">—</p>
+
+                <h5 class="card-title text-info">Change login email</h5>
+                <p class="card-text text-muted">We’ll send a confirmation link to the new address. Your email won’t change until you confirm.</p>
+                <div class="row g-2 align-items-end flex-wrap">
+                    <div class="col-md-6">
+                        <label for="new-account-email" class="form-label">New email address</label>
+                        <input type="email" class="form-control bg-dark text-light border-secondary" id="new-account-email" placeholder="you@example.com" autocomplete="email">
+                    </div>
+                    <div class="col-md-6">
+                        <button type="button" class="btn btn-outline-info" id="change-email-btn">Send confirmation email</button>
+                    </div>
+                </div>
+                <div id="email-change-message" class="alert d-none mt-3"></div>
+
+                <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+
                 <h5 class="card-title text-info">Update Password</h5>
                 <p class="card-text text-muted">Send a password reset link to your email address to securely update your password.</p>
                 
@@ -146,6 +171,29 @@
         let currentTeamId = null;
         let allTeams = [];
 
+        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        function syncTeamLeadUi() {
+            const formSection = document.getElementById('invite-form-section');
+            const notice = document.getElementById('invite-lead-only-notice');
+            if (!formSection || !notice) return;
+            if (!currentTeamId || !allTeams.length) {
+                formSection.classList.add('d-none');
+                notice.classList.add('d-none');
+                return;
+            }
+            const team = allTeams.find(t => t.id === currentTeamId);
+            const leadId = team?.created_by || null;
+            const iAmLead = !!(leadId && userSession.user.id === leadId);
+            if (iAmLead) {
+                formSection.classList.remove('d-none');
+                notice.classList.add('d-none');
+            } else {
+                formSection.classList.add('d-none');
+                notice.classList.remove('d-none');
+            }
+        }
+
         async function init() {
             await renderNavbar();
 
@@ -156,7 +204,17 @@
             }
             userSession = session;
 
+            const accEl = document.getElementById('account-email-display');
+            if (accEl) accEl.textContent = session.user.email || '—';
+
             await loadTeams();
+
+            supabase.auth.onAuthStateChange((_event, session) => {
+                if (!session) return;
+                userSession = session;
+                const acc = document.getElementById('account-email-display');
+                if (acc) acc.textContent = session.user.email || '—';
+            });
         }
 
         async function loadTeams() {
@@ -188,10 +246,13 @@
                 // Setup UI
                 setupTeamSelector();
                 populateForm(activeTeam);
+                syncTeamLeadUi();
                 loadTeamMembers(activeTeam.id);
             } else {
                 // User has no teams (should be rare due to trigger, but possible)
+                currentTeamId = null;
                 document.getElementById('team-selector-container').classList.add('d-none');
+                syncTeamLeadUi();
             }
         }
 
@@ -261,16 +322,26 @@
                 if (invitesError) throw invitesError;
 
                 list.innerHTML = '';
+
+                const teamMeta = allTeams.find(t => t.id === teamId);
+                const leadId = teamMeta?.created_by || null;
+                const iAmLead = leadId && userSession.user.id === leadId;
                 
                 // Render active members
                 members.forEach(member => {
                     const isMe = member.user_id === userSession.user.id;
+                    const isTeamLead = leadId && member.user_id === leadId;
                     const li = document.createElement('li');
                     li.className = 'list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center';
                     
-                    let html = `<span>${member.email} ${isMe ? '<span class="badge bg-info ms-2">You</span>' : '<span class="badge bg-success ms-2">Active</span>'}</span>`;
+                    let badges = isMe ? '<span class="badge bg-info ms-2">You</span>' : '<span class="badge bg-success ms-2">Active</span>';
+                    if (isTeamLead) {
+                        badges += '<span class="badge bg-primary ms-2">Team lead</span>';
+                    }
+                    let html = `<span>${member.email} ${badges}</span>`;
                     
-                    if (!isMe) {
+                    // Only the team creator may remove other members (not themselves)
+                    if (!isMe && iAmLead) {
                         html += `<button class="btn btn-outline-danger btn-sm remove-member-btn" data-userid="${member.user_id}">Remove</button>`;
                     }
                     
@@ -278,14 +349,18 @@
                     list.appendChild(li);
                 });
 
-                // Render pending invites
+                // Render pending invites (only team lead can resend)
                 invites.forEach(invite => {
                     const li = document.createElement('li');
                     li.className = 'list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center';
                     
+                    let actions = '';
+                    if (iAmLead) {
+                        actions = `<button class="btn btn-outline-info btn-sm resend-invite-btn" data-email="${invite.email}" data-token="${invite.token}">Resend</button>`;
+                    }
                     li.innerHTML = `
                         <span>${invite.email} <span class="badge bg-warning text-dark ms-2">Pending</span></span>
-                        <button class="btn btn-outline-info btn-sm resend-invite-btn" data-email="${invite.email}" data-token="${invite.token}">Resend</button>
+                        ${actions}
                     `;
                     list.appendChild(li);
                 });
@@ -318,9 +393,10 @@
                     });
                 });
 
-                // Attach resend listeners
+                // Attach resend listeners (buttons only exist for team lead)
                 document.querySelectorAll('.resend-invite-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
+                        if (!iAmLead) return;
                         const email = e.target.getAttribute('data-email');
                         const token = e.target.getAttribute('data-token');
                         
@@ -396,6 +472,16 @@
             const inviteEmail = document.getElementById('invite-email').value;
             const btn = document.getElementById('send-invite-btn');
             const msgDiv = document.getElementById('invite-message');
+
+            const team = allTeams.find(t => t.id === currentTeamId);
+            const leadId = team?.created_by || null;
+            const iAmLead = !!(leadId && userSession.user.id === leadId);
+            if (!iAmLead) {
+                msgDiv.className = 'alert alert-danger';
+                msgDiv.textContent = 'Only the team lead can send invitations for this team.';
+                msgDiv.classList.remove('d-none');
+                return;
+            }
             
             if (!currentTeamId) {
                 msgDiv.className = 'alert alert-danger';
@@ -474,6 +560,57 @@
             document.getElementById('letterhead').value = ""; // Clear file input if any
         });
 
+        document.getElementById('change-email-btn')?.addEventListener('click', async (e) => {
+            const btn = e.target;
+            const msgDiv = document.getElementById('email-change-message');
+            const input = document.getElementById('new-account-email');
+            const newEmail = (input?.value || '').trim();
+
+            msgDiv.classList.add('d-none');
+            if (!newEmail) {
+                msgDiv.className = 'alert alert-warning mt-3';
+                msgDiv.textContent = 'Enter a new email address.';
+                msgDiv.classList.remove('d-none');
+                return;
+            }
+            if (!EMAIL_RE.test(newEmail)) {
+                msgDiv.className = 'alert alert-danger mt-3';
+                msgDiv.textContent = 'Please enter a valid email address.';
+                msgDiv.classList.remove('d-none');
+                return;
+            }
+            if (newEmail.toLowerCase() === (userSession.user.email || '').toLowerCase()) {
+                msgDiv.className = 'alert alert-info mt-3';
+                msgDiv.textContent = 'That is already your login email.';
+                msgDiv.classList.remove('d-none');
+                return;
+            }
+
+            btn.disabled = true;
+            const prev = btn.textContent;
+            btn.textContent = 'Sending…';
+
+            try {
+                const { error } = await supabase.auth.updateUser(
+                    { email: newEmail },
+                    { emailRedirectTo: window.location.origin + '/profile.html' }
+                );
+                if (error) throw error;
+
+                msgDiv.className = 'alert alert-success mt-3';
+                msgDiv.textContent = `Check ${newEmail} for a confirmation link. Your login email will update after you confirm.`;
+                input.value = '';
+            } catch (err) {
+                console.error(err);
+                msgDiv.className = 'alert alert-danger mt-3';
+                msgDiv.textContent = err.message || 'Could not start email change.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = prev;
+                msgDiv.classList.remove('d-none');
+            }
+        });
+
         document.getElementById('send-password-reset-btn').addEventListener('click', async (e) => {
             const btn = e.target;
             const msgDiv = document.getElementById('password-message');
@@ -541,10 +678,13 @@
             errorDiv.classList.add('d-none');
 
             if (!currentTeamId) {
-                // Create a new team if one doesn't exist
+                // Create a new team if one doesn't exist (caller is team lead)
                 const { data: newTeam, error: createError } = await supabase
                     .from('teams')
-                    .insert([{ company_name: document.getElementById('company_name').value }])
+                    .insert([{
+                        company_name: document.getElementById('company_name').value,
+                        created_by: userSession.user.id
+                    }])
                     .select()
                     .single();
                 

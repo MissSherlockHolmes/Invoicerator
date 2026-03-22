@@ -9,6 +9,7 @@ CREATE TABLE public.teams (
   selected_fields JSONB DEFAULT '[]'::jsonb,
   terms_conditions TEXT,
   invite_code UUID DEFAULT gen_random_uuid() UNIQUE,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -29,8 +30,8 @@ DECLARE
   new_team_id UUID;
 BEGIN
   FOR prof IN SELECT * FROM public.profiles LOOP
-    INSERT INTO public.teams (company_name, company_email, company_address, company_phone, letterhead_url, selected_fields, terms_conditions)
-    VALUES (prof.company_name, prof.company_email, prof.company_address, prof.company_phone, prof.letterhead_url, prof.selected_fields, prof.terms_conditions)
+    INSERT INTO public.teams (company_name, company_email, company_address, company_phone, letterhead_url, selected_fields, terms_conditions, created_by)
+    VALUES (prof.company_name, prof.company_email, prof.company_address, prof.company_phone, prof.letterhead_url, prof.selected_fields, prof.terms_conditions, prof.id)
     RETURNING id INTO new_team_id;
 
     INSERT INTO public.team_members (team_id, user_id)
@@ -89,8 +90,8 @@ DECLARE
   new_team_id UUID;
 BEGIN
   -- Create a default team for the new user (leave company name blank)
-  INSERT INTO public.teams (company_name)
-  VALUES (NULL)
+  INSERT INTO public.teams (company_name, created_by)
+  VALUES (NULL, new.id)
   RETURNING id INTO new_team_id;
 
   -- Add the user to their new team

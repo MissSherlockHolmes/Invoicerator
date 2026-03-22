@@ -9,9 +9,19 @@ export async function renderNavbar() {
 
     const homeLink = session ? '/options.html' : '/';
 
+    const escapeHtml = (s) => String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
     let rightLinks = '';
 
     if (session) {
+        const email = session.user?.email || '';
+        rightLinks += `<li class="nav-item d-flex align-items-center me-lg-2 mb-2 mb-lg-0">
+            <span class="navbar-text text-secondary small text-truncate" style="max-width: 14rem;" title="${escapeHtml(email)}">Signed in as <span class="text-light">${escapeHtml(email)}</span></span>
+        </li>`;
         // If we are NOT on the welcome/options page, show links to the other pages
         if (path !== '/options.html') {
             if (path !== '/create_invoice.html') {

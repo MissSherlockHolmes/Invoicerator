@@ -6,9 +6,9 @@ AS $$
 DECLARE
   new_team_id UUID;
 BEGIN
-  -- Insert the new team
-  INSERT INTO public.teams (company_name)
-  VALUES (new_company_name)
+  -- Insert the new team (caller is team lead)
+  INSERT INTO public.teams (company_name, created_by)
+  VALUES (new_company_name, auth.uid())
   RETURNING id INTO new_team_id;
 
   -- Add the calling user to the new team

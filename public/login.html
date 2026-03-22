@@ -67,6 +67,12 @@
                     emailInput.readOnly = true;
                 }
             });
+            // Also try setting it immediately in case DOMContentLoaded already fired
+            const emailInput = document.getElementById('email');
+            if (emailInput) {
+                emailInput.value = prefillEmail;
+                emailInput.readOnly = true;
+            }
         }
 
         document.getElementById('togglePassword').addEventListener('click', function (e) {

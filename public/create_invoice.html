@@ -240,7 +240,8 @@
             }
             
             const emails = val.split(',').map(e => e.trim());
-            const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+            // Updated regex to be more permissive with standard email formats
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             
             const isValid = emails.every(email => emailRegex.test(email));
             
@@ -260,7 +261,8 @@
                 return false;
             }
             
-            const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+            // Updated regex to be more permissive with standard email formats
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             const isValid = emailRegex.test(val);
             
             if (isValid) {
@@ -307,8 +309,19 @@
                     // Try to load image
                     const imgData = await getBase64ImageFromUrl(userProfile.letterhead_url);
                     if (imgData) {
-                        doc.addImage(imgData, 'PNG', 10, 10, 50, 20);
-                        yPos = 40;
+                        // Calculate aspect ratio to prevent stretching
+                        const img = new Image();
+                        img.src = imgData;
+                        await new Promise(resolve => { img.onload = resolve; });
+                        
+                        const maxWidth = 50;
+                        const maxHeight = 20;
+                        const ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
+                        const finalWidth = img.width * ratio;
+                        const finalHeight = img.height * ratio;
+
+                        doc.addImage(imgData, 'PNG', 10, 10, finalWidth, finalHeight);
+                        yPos = 10 + finalHeight + 10;
                     }
                 } catch (e) {
                     console.error("Could not load letterhead", e);

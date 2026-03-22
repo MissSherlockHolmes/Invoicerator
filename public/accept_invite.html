@@ -55,16 +55,15 @@
             if (!session) {
                 // Fetch the email associated with this token so we can pre-fill it
                 try {
-                    const { data: inviteData } = await supabase
-                        .from('team_invites')
-                        .select('email')
-                        .eq('token', inviteToken)
-                        .single();
+                    // We need to use an RPC function here because RLS prevents unauthenticated users from reading the team_invites table directly
+                    const { data: inviteEmail, error: fetchError } = await supabase.rpc('get_invite_email_by_token', {
+                        p_token: inviteToken
+                    });
                         
-                    if (inviteData && inviteData.email) {
+                    if (inviteEmail) {
                         // Update the links to pass the email as a URL parameter
-                        document.getElementById('login-link').href = `/login.html?email=${encodeURIComponent(inviteData.email)}`;
-                        document.getElementById('signup-link').href = `/signup.html?email=${encodeURIComponent(inviteData.email)}`;
+                        document.getElementById('login-link').href = `/login.html?email=${encodeURIComponent(inviteEmail)}`;
+                        document.getElementById('signup-link').href = `/signup.html?email=${encodeURIComponent(inviteEmail)}`;
                     }
                 } catch (e) {
                     console.error("Could not fetch invite email", e);

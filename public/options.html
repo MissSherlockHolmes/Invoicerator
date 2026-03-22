@@ -45,13 +45,21 @@
             }
             
             // Fetch company name for the welcome message
-            const { data: teamMember } = await supabase
+            const { data: teamMembers } = await supabase
                 .from('team_members')
                 .select('team_id, teams(company_name)')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
+                .eq('user_id', session.user.id);
             
-            const profile = teamMember ? teamMember.teams : null;
+            let profile = null;
+            if (teamMembers && teamMembers.length > 0) {
+                let activeId = localStorage.getItem('activeTeamId');
+                let activeTeam = teamMembers.find(tm => tm.team_id === activeId);
+                if (!activeTeam) {
+                    activeTeam = teamMembers[0];
+                    localStorage.setItem('activeTeamId', activeTeam.team_id);
+                }
+                profile = activeTeam.teams;
+            }
             
             if (profile && profile.company_name) {
                 document.getElementById('welcome-message').textContent = `Welcome back, ${profile.company_name}!`;

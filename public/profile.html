@@ -103,7 +103,7 @@
                 </form>
 
                 <div class="mt-4">
-                    <h6 class="text-info mb-3">Current Members</h6>
+                    <h6 class="text-info mb-3">Current Members & Pending Invites</h6>
                     <ul id="members-list" class="list-group list-group-flush" style="border-radius: 5px; overflow: hidden;">
                         <li class="list-group-item bg-dark text-light border-secondary text-center">Loading members...</li>
                     </ul>
@@ -240,19 +240,30 @@
         async function loadTeamMembers(teamId) {
             const list = document.getElementById('members-list');
             try {
-                const { data: members, error } = await supabase.rpc('get_team_members_with_emails', {
+                // Fetch active members
+                const { data: members, error: membersError } = await supabase.rpc('get_team_members_with_emails', {
                     p_team_id: teamId
                 });
 
-                if (error) throw error;
+                if (membersError) throw membersError;
+
+                // Fetch pending invites
+                const { data: invites, error: invitesError } = await supabase
+                    .from('team_invites')
+                    .select('email, token')
+                    .eq('team_id', teamId);
+                
+                if (invitesError) throw invitesError;
 
                 list.innerHTML = '';
+                
+                // Render active members
                 members.forEach(member => {
                     const isMe = member.user_id === userSession.user.id;
                     const li = document.createElement('li');
                     li.className = 'list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center';
                     
-                    let html = `<span>${member.email} ${isMe ? '<span class="badge bg-info ms-2">You</span>' : ''}</span>`;
+                    let html = `<span>${member.email} ${isMe ? '<span class="badge bg-info ms-2">You</span>' : '<span class="badge bg-success ms-2">Active</span>'}</span>`;
                     
                     if (!isMe) {
                         html += `<button class="btn btn-outline-danger btn-sm remove-member-btn" data-userid="${member.user_id}">Remove</button>`;
@@ -261,6 +272,22 @@
                     li.innerHTML = html;
                     list.appendChild(li);
                 });
+
+                // Render pending invites
+                invites.forEach(invite => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item bg-dark text-light border-secondary d-flex justify-content-between align-items-center';
+                    
+                    li.innerHTML = `
+                        <span>${invite.email} <span class="badge bg-warning text-dark ms-2">Pending</span></span>
+                        <button class="btn btn-outline-info btn-sm resend-invite-btn" data-email="${invite.email}" data-token="${invite.token}">Resend</button>
+                    `;
+                    list.appendChild(li);
+                });
+
+                if (members.length === 0 && invites.length === 0) {
+                    list.innerHTML = `<li class="list-group-item bg-dark text-muted border-secondary text-center">No members found.</li>`;
+                }
 
                 // Attach remove listeners
                 document.querySelectorAll('.remove-member-btn').forEach(btn => {
@@ -282,6 +309,44 @@
                                 e.target.disabled = false;
                                 e.target.textContent = 'Remove';
                             }
+                        }
+                    });
+                });
+
+                // Attach resend listeners
+                document.querySelectorAll('.resend-invite-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const email = e.target.getAttribute('data-email');
+                        const token = e.target.getAttribute('data-token');
+                        
+                        e.target.disabled = true;
+                        e.target.textContent = 'Sending...';
+                        
+                        try {
+                            const companyName = document.getElementById('company_name').value || 'A team';
+                            const response = await fetch('/.netlify/functions/send-invite-email', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    email: email,
+                                    token: token,
+                                    companyName: companyName,
+                                    origin: window.location.origin
+                                })
+                            });
+
+                            if (!response.ok) throw new Error('Failed to resend email');
+                            
+                            e.target.textContent = 'Sent!';
+                            setTimeout(() => {
+                                e.target.textContent = 'Resend';
+                                e.target.disabled = false;
+                            }, 3000);
+                        } catch (err) {
+                            console.error(err);
+                            alert("Failed to resend invite: " + err.message);
+                            e.target.disabled = false;
+                            e.target.textContent = 'Resend';
                         }
                     });
                 });
@@ -339,19 +404,29 @@
             msgDiv.classList.add('d-none');
 
             try {
-                // 1. Create the invite in the database
-                const { data: inviteData, error: inviteError } = await supabase
+                // 1. Check if invite already exists
+                const { data: existingInvite } = await supabase
                     .from('team_invites')
-                    .insert([{ team_id: currentTeamId, email: inviteEmail }])
                     .select('token')
-                    .single();
+                    .eq('team_id', currentTeamId)
+                    .eq('email', inviteEmail)
+                    .maybeSingle();
 
-                if (inviteError) {
-                    // Handle case where invite already exists
-                    if (inviteError.code === '23505') {
-                        throw new Error('An invite has already been sent to this email address.');
-                    }
-                    throw inviteError;
+                let inviteToken;
+
+                if (existingInvite) {
+                    // Reuse existing token
+                    inviteToken = existingInvite.token;
+                } else {
+                    // Create new invite
+                    const { data: newInvite, error: insertError } = await supabase
+                        .from('team_invites')
+                        .insert([{ team_id: currentTeamId, email: inviteEmail }])
+                        .select('token')
+                        .single();
+                        
+                    if (insertError) throw insertError;
+                    inviteToken = newInvite.token;
                 }
 
                 // 2. Call Netlify function to send the email
@@ -361,7 +436,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: inviteEmail,
-                        token: inviteData.token,
+                        token: inviteToken,
                         companyName: companyName,
                         origin: window.location.origin
                     })
@@ -374,6 +449,9 @@
                 msgDiv.className = 'alert alert-success';
                 msgDiv.textContent = `Invite sent successfully to ${inviteEmail}!`;
                 document.getElementById('invite-email').value = '';
+                
+                // Refresh the members list to show the new pending invite
+                loadTeamMembers(currentTeamId);
             } catch (error) {
                 console.error(error);
                 msgDiv.className = 'alert alert-danger';

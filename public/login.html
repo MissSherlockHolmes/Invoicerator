@@ -55,6 +55,15 @@
     <script type="module">
         import { supabase } from '/js/supabase.js';
 
+        // Check if an email was passed in the URL (e.g. from an invite link)
+        const urlParams = new URLSearchParams(window.location.search);
+        const prefillEmail = urlParams.get('email');
+        if (prefillEmail) {
+            document.getElementById('email').value = prefillEmail;
+            // Optionally make it readonly so they don't accidentally change it and break the invite
+            document.getElementById('email').readOnly = true;
+        }
+
         document.getElementById('togglePassword').addEventListener('click', function (e) {
             const passwordInput = document.getElementById('password');
             const eyeIcon = document.getElementById('eyeIcon');

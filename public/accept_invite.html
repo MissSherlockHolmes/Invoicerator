@@ -18,8 +18,8 @@
                 
                 <div id="action-buttons" class="d-none mt-4">
                     <p class="mb-3">You need to log in or create an account to join this team.</p>
-                    <a href="/login.html" class="btn btn-primary me-2">Log In</a>
-                    <a href="/signup.html" class="btn btn-success">Sign Up</a>
+                    <a href="/login.html" id="login-link" class="btn btn-primary me-2">Log In</a>
+                    <a href="/signup.html" id="signup-link" class="btn btn-success">Sign Up</a>
                 </div>
 
                 <div id="success-buttons" class="d-none mt-4">
@@ -53,6 +53,23 @@
             const { data: { session } } = await supabase.auth.getSession();
             
             if (!session) {
+                // Fetch the email associated with this token so we can pre-fill it
+                try {
+                    const { data: inviteData } = await supabase
+                        .from('team_invites')
+                        .select('email')
+                        .eq('token', inviteToken)
+                        .single();
+                        
+                    if (inviteData && inviteData.email) {
+                        // Update the links to pass the email as a URL parameter
+                        document.getElementById('login-link').href = `/login.html?email=${encodeURIComponent(inviteData.email)}`;
+                        document.getElementById('signup-link').href = `/signup.html?email=${encodeURIComponent(inviteData.email)}`;
+                    }
+                } catch (e) {
+                    console.error("Could not fetch invite email", e);
+                }
+
                 statusDiv.className = 'alert alert-warning';
                 statusDiv.textContent = 'Please log in or sign up to accept this invite. Make sure to use the exact email address the invite was sent to.';
                 document.getElementById('action-buttons').classList.remove('d-none');

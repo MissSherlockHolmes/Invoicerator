@@ -67,6 +67,15 @@
     <script type="module">
         import { supabase } from '/js/supabase.js';
 
+        // Check if an email was passed in the URL (e.g. from an invite link)
+        const urlParams = new URLSearchParams(window.location.search);
+        const prefillEmail = urlParams.get('email');
+        if (prefillEmail) {
+            document.getElementById('email').value = prefillEmail;
+            // Make it readonly so they don't accidentally sign up with a different email than invited
+            document.getElementById('email').readOnly = true;
+        }
+
         function showSuccessDialog() {
             const dialog = document.createElement('div');
             dialog.className = 'success-dialog';

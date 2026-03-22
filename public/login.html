@@ -59,9 +59,14 @@
         const urlParams = new URLSearchParams(window.location.search);
         const prefillEmail = urlParams.get('email');
         if (prefillEmail) {
-            document.getElementById('email').value = prefillEmail;
-            // Optionally make it readonly so they don't accidentally change it and break the invite
-            document.getElementById('email').readOnly = true;
+            document.addEventListener('DOMContentLoaded', () => {
+                const emailInput = document.getElementById('email');
+                if (emailInput) {
+                    emailInput.value = prefillEmail;
+                    // Optionally make it readonly so they don't accidentally change it and break the invite
+                    emailInput.readOnly = true;
+                }
+            });
         }
 
         document.getElementById('togglePassword').addEventListener('click', function (e) {

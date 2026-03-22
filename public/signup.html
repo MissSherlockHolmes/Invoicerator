@@ -71,9 +71,15 @@
         const urlParams = new URLSearchParams(window.location.search);
         const prefillEmail = urlParams.get('email');
         if (prefillEmail) {
-            document.getElementById('email').value = prefillEmail;
-            // Make it readonly so they don't accidentally sign up with a different email than invited
-            document.getElementById('email').readOnly = true;
+            // Wait for the DOM to be fully loaded before setting the value
+            document.addEventListener('DOMContentLoaded', () => {
+                const emailInput = document.getElementById('email');
+                if (emailInput) {
+                    emailInput.value = prefillEmail;
+                    // Make it readonly so they don't accidentally sign up with a different email than invited
+                    emailInput.readOnly = true;
+                }
+            });
         }
 
         function showSuccessDialog() {

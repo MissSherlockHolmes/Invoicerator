@@ -113,6 +113,20 @@
 
         <hr class="my-5" style="border-color: rgba(255,255,255,0.2);">
 
+        <h3 class="text-center mb-4">Account Settings</h3>
+        <div class="card bg-dark text-light mb-5" style="border: 1px solid rgba(255,255,255,0.2);">
+            <div class="card-body">
+                <h5 class="card-title text-info">Update Password</h5>
+                <p class="card-text text-muted">Send a password reset link to your email address to securely update your password.</p>
+                
+                <div id="password-message" class="alert d-none"></div>
+
+                <button type="button" class="btn btn-outline-info mt-2" id="send-password-reset-btn">Send Password Reset Email</button>
+            </div>
+        </div>
+
+        <hr class="my-5" style="border-color: rgba(255,255,255,0.2);">
+
         <h3 class="text-center mb-4 text-danger">Danger Zone</h3>
         <div class="card bg-dark text-light mb-5" style="border: 1px solid #dc3545;">
             <div class="card-body">
@@ -458,6 +472,35 @@
             document.getElementById('current-letterhead-container').classList.add('d-none');
             document.getElementById('delete_letterhead').value = "true";
             document.getElementById('letterhead').value = ""; // Clear file input if any
+        });
+
+        document.getElementById('send-password-reset-btn').addEventListener('click', async (e) => {
+            const btn = e.target;
+            const msgDiv = document.getElementById('password-message');
+            
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            msgDiv.classList.add('d-none');
+
+            try {
+                const { error } = await supabase.auth.resetPasswordForEmail(userSession.user.email, {
+                    redirectTo: window.location.origin + '/update_password.html',
+                });
+
+                if (error) throw error;
+
+                msgDiv.className = 'alert alert-success mt-3';
+                msgDiv.textContent = `Password reset link sent to ${userSession.user.email}!`;
+                btn.textContent = 'Link Sent';
+            } catch (error) {
+                console.error(error);
+                msgDiv.className = 'alert alert-danger mt-3';
+                msgDiv.textContent = error.message || 'Failed to send password reset email.';
+                btn.disabled = false;
+                btn.textContent = 'Send Password Reset Email';
+            } finally {
+                msgDiv.classList.remove('d-none');
+            }
         });
 
         document.getElementById('delete-account-btn').addEventListener('click', async () => {

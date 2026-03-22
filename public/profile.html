@@ -16,6 +16,7 @@
         <div id="error-message" class="alert alert-danger d-none"></div>
         
         <form id="profile-form">
+            <!-- (Form fields remain the same) -->
             <div class="mb-3">
                 <label for="company_name" class="form-label">Company Name:</label>
                 <input type="text" id="company_name" name="company_name" class="form-control" required>
@@ -23,6 +24,11 @@
             <div class="mb-3">
                 <label for="company_email" class="form-label">Company Email:</label>
                 <input type="email" id="company_email" name="company_email" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="default_cc_emails" class="form-label">Default CC Emails:</label>
+                <input type="text" id="default_cc_emails" name="default_cc_emails" class="form-control" placeholder="email1@example.com, email2@example.com">
+                <div class="form-text text-muted" style="font-size: 0.85em;">Comma-separated list of emails to CC on every invoice.</div>
             </div>
             <div class="mb-3">
                 <label class="form-label">Company Address:</label>
@@ -66,8 +72,35 @@
                 <button type="submit" class="btn btn-primary" id="save-btn">Save Profile</button>
             </div>
         </form>
-        <div class="mt-4 d-flex justify-content-between">
-            <a href="/create_invoice.html" class="btn btn-success">Create Invoice</a>
+
+        <hr class="my-5" style="border-color: rgba(255,255,255,0.2);">
+
+        <h3 class="text-center mb-4">Team Settings</h3>
+        <div class="card bg-dark text-light mb-5" style="border: 1px solid rgba(255,255,255,0.2);">
+            <div class="card-body">
+                <h5 class="card-title text-info">Invite Team Members</h5>
+                <p class="card-text text-muted">Send an email invitation to authorize a new member to join your company profile and create invoices.</p>
+                
+                <div id="invite-message" class="alert d-none"></div>
+
+                <form id="invite-form" class="mt-3">
+                    <div class="input-group mb-3">
+                        <input type="email" class="form-control" id="invite-email" placeholder="colleague@example.com" required>
+                        <button class="btn btn-outline-info" type="submit" id="send-invite-btn">Send Invite</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <hr class="my-5" style="border-color: rgba(255,255,255,0.2);">
+
+        <h3 class="text-center mb-4 text-danger">Danger Zone</h3>
+        <div class="card bg-dark text-light mb-5" style="border: 1px solid #dc3545;">
+            <div class="card-body">
+                <h5 class="card-title text-danger">Delete Account</h5>
+                <p class="card-text text-muted">Once you delete your account, there is no going back. Please be certain.</p>
+                <button type="button" class="btn btn-danger" id="delete-account-btn">Delete My Account</button>
+            </div>
         </div>
     </div>
 
@@ -77,6 +110,7 @@
         import { renderNavbar } from '/js/navbar.js';
 
         let userSession = null;
+        let currentTeamId = null;
 
         async function init() {
             await renderNavbar();
@@ -88,16 +122,20 @@
             }
             userSession = session;
 
-            // Load profile data
-            const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
+            // Load team data instead of personal profile
+            const { data: teamMember, error: tmError } = await supabase
+                .from('team_members')
+                .select('team_id, teams(*)')
+                .eq('user_id', session.user.id)
                 .maybeSingle();
 
-            if (profile) {
+            if (teamMember && teamMember.teams) {
+                const profile = teamMember.teams;
+                currentTeamId = profile.id;
+                
                 document.getElementById('company_name').value = profile.company_name || '';
                 document.getElementById('company_email').value = profile.company_email || '';
+                document.getElementById('default_cc_emails').value = profile.default_cc_emails || '';
                 if (profile.company_address) {
                     try {
                         const addr = JSON.parse(profile.company_address);
@@ -121,10 +159,99 @@
             }
         }
 
+        document.getElementById('invite-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const inviteEmail = document.getElementById('invite-email').value;
+            const btn = document.getElementById('send-invite-btn');
+            const msgDiv = document.getElementById('invite-message');
+            
+            if (!currentTeamId) {
+                msgDiv.className = 'alert alert-danger';
+                msgDiv.textContent = 'You must save your profile to create a team before inviting members.';
+                msgDiv.classList.remove('d-none');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            msgDiv.classList.add('d-none');
+
+            try {
+                // 1. Create the invite in the database
+                const { data: inviteData, error: inviteError } = await supabase
+                    .from('team_invites')
+                    .insert([{ team_id: currentTeamId, email: inviteEmail }])
+                    .select('token')
+                    .single();
+
+                if (inviteError) {
+                    // Handle case where invite already exists
+                    if (inviteError.code === '23505') {
+                        throw new Error('An invite has already been sent to this email address.');
+                    }
+                    throw inviteError;
+                }
+
+                // 2. Call Netlify function to send the email
+                const companyName = document.getElementById('company_name').value || 'A team';
+                const response = await fetch('/.netlify/functions/send-invite-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: inviteEmail,
+                        token: inviteData.token,
+                        companyName: companyName,
+                        origin: window.location.origin
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to send the email, but the invite was created.');
+                }
+
+                msgDiv.className = 'alert alert-success';
+                msgDiv.textContent = `Invite sent successfully to ${inviteEmail}!`;
+                document.getElementById('invite-email').value = '';
+            } catch (error) {
+                console.error(error);
+                msgDiv.className = 'alert alert-danger';
+                msgDiv.textContent = error.message || 'An error occurred while sending the invite.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Send Invite';
+                msgDiv.classList.remove('d-none');
+            }
+        });
+
         document.getElementById('remove-letterhead-btn').addEventListener('click', () => {
             document.getElementById('current-letterhead-container').classList.add('d-none');
             document.getElementById('delete_letterhead').value = "true";
             document.getElementById('letterhead').value = ""; // Clear file input if any
+        });
+
+        document.getElementById('delete-account-btn').addEventListener('click', async () => {
+            if (confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.")) {
+                const btn = document.getElementById('delete-account-btn');
+                btn.disabled = true;
+                btn.textContent = "Deleting...";
+                
+                try {
+                    // Supabase requires calling an Edge Function or using the admin API to delete users.
+                    // For security, the client-side JS cannot delete the auth.user directly.
+                    // Instead, we call a custom RPC function we will create.
+                    const { error } = await supabase.rpc('delete_user_account');
+                    
+                    if (error) throw error;
+                    
+                    await supabase.auth.signOut();
+                    window.location.href = '/';
+                } catch (err) {
+                    console.error(err);
+                    alert("Failed to delete account. Please contact support.");
+                    btn.disabled = false;
+                    btn.textContent = "Delete My Account";
+                }
+            }
         });
 
         document.getElementById('profile-form').addEventListener('submit', async (e) => {
@@ -139,6 +266,30 @@
             successDiv.classList.add('d-none');
             errorDiv.classList.add('d-none');
 
+            if (!currentTeamId) {
+                // Create a new team if one doesn't exist
+                const { data: newTeam, error: createError } = await supabase
+                    .from('teams')
+                    .insert([{ company_name: document.getElementById('company_name').value }])
+                    .select()
+                    .single();
+                
+                if (createError) {
+                    errorDiv.textContent = "Error creating team: " + createError.message;
+                    errorDiv.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.textContent = 'Save Profile';
+                    return;
+                }
+
+                currentTeamId = newTeam.id;
+
+                // Add user to the new team
+                await supabase
+                    .from('team_members')
+                    .insert([{ team_id: currentTeamId, user_id: userSession.user.id }]);
+            }
+
             const addressObj = {
                 street: document.getElementById('company_street').value,
                 city: document.getElementById('company_city').value,
@@ -147,9 +298,9 @@
             };
 
             const updates = {
-                id: userSession.user.id,
                 company_name: document.getElementById('company_name').value,
                 company_email: document.getElementById('company_email').value,
+                default_cc_emails: document.getElementById('default_cc_emails').value,
                 company_address: JSON.stringify(addressObj),
                 company_phone: document.getElementById('company_phone').value,
                 terms_conditions: document.getElementById('terms_conditions').value,
@@ -166,7 +317,7 @@
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
                 const fileExt = file.name.split('.').pop();
-                const fileName = `${userSession.user.id}-${Math.random()}.${fileExt}`;
+                const fileName = `team-${currentTeamId}-${Math.random()}.${fileExt}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('letterheads')
@@ -193,8 +344,9 @@
             }
 
             const { error } = await supabase
-                .from('profiles')
-                .upsert(updates);
+                .from('teams')
+                .update(updates)
+                .eq('id', currentTeamId);
 
             if (error) {
                 errorDiv.textContent = error.message;

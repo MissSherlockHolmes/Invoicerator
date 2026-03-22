@@ -23,7 +23,10 @@
                         <input type="email" class="form-control" id="email" name="email" required>
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">Password:</label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="password" class="form-label mb-0">Password:</label>
+                            <a href="/forgot_password.html" class="text-decoration-none small">Forgot Password?</a>
+                        </div>
                         <div class="input-group">
                             <input type="password" class="form-control" id="password" name="password" style="border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important;" required>
                             <button class="btn btn-outline-secondary" type="button" id="togglePassword" style="border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important;">
@@ -90,7 +93,13 @@
                 btn.disabled = false;
                 btn.textContent = 'Login';
             } else {
-                window.location.href = '/profile.html';
+                // Check if they have a pending invite
+                const pendingInvite = sessionStorage.getItem('pending_invite_token');
+                if (pendingInvite) {
+                    window.location.href = '/accept_invite.html?token=' + pendingInvite;
+                } else {
+                    window.location.href = '/options.html';
+                }
             }
         });
     </script>

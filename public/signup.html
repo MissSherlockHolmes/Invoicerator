@@ -20,7 +20,7 @@
                     <form id="signup-form">
                         <div class="mb-3">
                             <label for="email" class="form-label">Email:</label>
-                            <input type="email" id="email" name="email" class="form-control" required>
+                            <input type="email" id="email" name="email" class="form-control" pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$" title="Please enter a valid email address (e.g. user@example.com)" required>
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Password:</label>
@@ -73,7 +73,8 @@
             dialog.innerHTML = `
                 <div class="dialog-content">
                     <h2>SIGN UP SUCCESSFUL!</h2>
-                    <p>Redirecting you to your profile page...</p>
+                    <p>Please check your email to confirm your account before logging in.</p>
+                    <button id="close-success-btn" class="btn btn-outline-info mt-3">Go to Login</button>
                 </div>
             `;
             document.body.appendChild(dialog);
@@ -110,9 +111,9 @@
                 content.style.transform = 'scale(1)';
             }, 100);
     
-            setTimeout(() => {
-                window.location.href = '/profile.html';
-            }, 1500);
+            document.getElementById('close-success-btn').addEventListener('click', () => {
+                window.location.href = '/login.html';
+            });
         }
 
         document.getElementById('togglePassword').addEventListener('click', function (e) {
@@ -190,7 +191,27 @@
                 btn.disabled = false;
                 btn.textContent = 'Sign Up';
             } else {
-                showSuccessDialog();
+                // Check if email confirmation is required
+                if (data.user && data.user.identities && data.user.identities.length === 0) {
+                    errorDiv.textContent = "This email is already registered. Please log in.";
+                    errorDiv.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.textContent = 'Sign Up';
+                    return;
+                }
+                
+                // If session is null, it means email confirmation is turned ON in Supabase
+                if (!data.session) {
+                    showSuccessDialog();
+                } else {
+                    // If they somehow get a session immediately, redirect them
+                    const pendingInvite = sessionStorage.getItem('pending_invite_token');
+                    if (pendingInvite) {
+                        window.location.href = '/accept_invite.html?token=' + pendingInvite;
+                    } else {
+                        window.location.href = '/options.html';
+                    }
+                }
             }
         });
     </script>

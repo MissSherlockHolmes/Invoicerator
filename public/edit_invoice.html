@@ -3,63 +3,264 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coming Soon</title>
+    <title>Edit Invoice - Invoicerator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
+    <!-- Include PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Set worker path
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
     <style>
-        .coming-soon-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #2c2c2c;
-            color: #00bfff;
-        }
-        .coming-soon-content {
-            background-color: rgba(0, 0, 0, 0.8);
+        .upload-wrapper {
+            background-color: rgba(0, 0, 0, 0.5);
             padding: 40px;
             border-radius: 10px;
             text-align: center;
-            max-width: 500px;
+            max-width: 600px;
             width: 100%;
+            margin: 50px auto;
+            border: 2px dashed #00bfff;
         }
-        .coming-soon-content h2 {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
+        .upload-wrapper.dragover {
+            background-color: rgba(0, 191, 255, 0.1);
+            border-color: #fff;
         }
-        .coming-soon-content p {
-            font-size: 1.2rem;
-            color: #ddd;
-            margin-bottom: 20px;
+        #file-input {
+            display: none;
         }
-        .coming-soon-content a.btn {
-            text-transform: uppercase;
-            font-weight: bold;
+        .custom-file-upload {
+            display: inline-block;
             padding: 10px 20px;
-            border: 2px solid #00bfff;
-            border-radius: 5px;
-            color: #00bfff;
-            background-color: transparent;
-            transition: background-color 0.3s;
-            text-decoration: none;
-        }
-        .coming-soon-content a.btn:hover {
+            cursor: pointer;
             background-color: #00bfff;
             color: #fff;
+            border-radius: 5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: background-color 0.3s;
+        }
+        .custom-file-upload:hover {
+            background-color: #0099cc;
+        }
+        #loading-spinner {
+            display: none;
+            margin-top: 20px;
+        }
+        .spinner-border {
+            color: #00bfff;
         }
     </style>
 </head>
 <body>
     <div id="navbar-container"></div>
-    <div class="coming-soon-wrapper">
-        <div class="coming-soon-content">
-            <h2>Coming Soon</h2>
-            <p>We're working on this feature. Check back soon!</p>
-            <a href="/options.html" class="btn">Return to Options</a>
+    
+    <div class="container">
+        <div class="upload-wrapper" id="drop-zone">
+            <h2 class="mb-3">Edit Existing Invoice</h2>
+            <p class="text-muted mb-4">Upload a PDF invoice. We will extract the data and auto-fill a new invoice for you to edit. No data is saved to our servers.</p>
+            
+            <div id="error-message" class="alert alert-danger d-none mb-4"></div>
+
+            <label for="file-input" class="custom-file-upload">
+                Choose PDF File
+            </label>
+            <input id="file-input" type="file" accept="application/pdf" />
+            
+            <p class="mt-3 text-muted small">or drag and drop here</p>
+
+            <div id="loading-spinner">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-info">Analyzing PDF...</p>
+            </div>
         </div>
     </div>
+
     <script type="module">
         import { renderNavbar } from '/js/navbar.js';
-        renderNavbar();
+        import { supabase } from '/js/supabase.js';
+
+        async function init() {
+            await renderNavbar();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                window.location.href = '/login.html';
+            }
+        }
+        init();
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const errorDiv = document.getElementById('error-message');
+        const uploadBtn = document.querySelector('.custom-file-upload');
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            if (file.type !== 'application/pdf') {
+                showError('Please upload a valid PDF file.');
+                return;
+            }
+
+            errorDiv.classList.add('d-none');
+            loadingSpinner.style.display = 'block';
+            uploadBtn.style.display = 'none';
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const text = await extractTextFromPDF(arrayBuffer);
+                const parsedData = parseInvoiceText(text);
+                
+                // Save to session storage
+                sessionStorage.setItem('parsedInvoiceData', JSON.stringify(parsedData));
+                
+                // Redirect to create invoice
+                window.location.href = '/create_invoice.html';
+            } catch (err) {
+                console.error(err);
+                showError('Failed to read the PDF. It might be corrupted or protected.');
+                loadingSpinner.style.display = 'none';
+                uploadBtn.style.display = 'inline-block';
+            }
+        }
+
+        function showError(msg) {
+            errorDiv.textContent = msg;
+            errorDiv.classList.remove('d-none');
+        }
+
+        async function extractTextFromPDF(arrayBuffer) {
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            let fullText = '';
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                
+                let text = '';
+                for (const item of textContent.items) {
+                    text += item.str;
+                    if (item.hasEOL) {
+                        text += '\n';
+                    } else {
+                        text += ' ';
+                    }
+                }
+                
+                fullText += text + '\n';
+            }
+            
+            return fullText;
+        }
+
+        function parseInvoiceText(text) {
+            const data = {
+                recipientEmail: '',
+                recipientName: '',
+                projectName: '',
+                invoiceNumber: '',
+                lineItems: []
+            };
+
+            // Basic heuristics to find email
+            const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i;
+            const emailMatch = text.match(emailRegex);
+            if (emailMatch) {
+                data.recipientEmail = emailMatch[1];
+            }
+
+            // Look for "Bill To:" or similar to find name
+            // We'll match everything after "Bill To:" up to the next newline or "Email:"
+            const billToMatch = text.match(/Bill To:\s*(.*?)(?:\n|Email:|$)/i);
+            if (billToMatch && billToMatch[1]) {
+                data.recipientName = billToMatch[1].trim();
+            }
+
+            // Look for "Invoice #:" or "Invoice Number:"
+            const invoiceNumMatch = text.match(/Invoice\s*(?:#|Number)[:\s]*([a-zA-Z0-9_-]+)/i);
+            if (invoiceNumMatch && invoiceNumMatch[1]) {
+                data.invoiceNumber = invoiceNumMatch[1].trim();
+            }
+
+            // Look for "Project:" to find project name
+            const projectMatch = text.match(/Project:\s*(.*?)(?:\n|$)/i);
+            if (projectMatch && projectMatch[1]) {
+                data.projectName = projectMatch[1].trim();
+            }
+
+            // Try to extract line items
+            const lines = text.split('\n');
+            let inTable = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Start parsing table after header
+                if (line.includes('Description Qty Rate Amount') || line.includes('Description') && line.includes('Amount')) {
+                    inTable = true;
+                    continue;
+                }
+                
+                if (inTable) {
+                    if (line.includes('Total Due:') || line.includes('Notes:') || line.includes('Terms and Conditions') || line.includes('Total')) {
+                        break; // End of table
+                    }
+
+                    // Look for pattern: [Text] [Number] [Number] [Number]
+                    // e.g., "this.item 1.00 2.00 2.00"
+                    // Allow optional $ signs and commas
+                    const itemMatch = line.match(/(.+?)\s+\$?([\d,]+(?:\.\d+)?)\s+\$?([\d,]+(?:\.\d+)?)\s+\$?([\d,]+(?:\.\d+)?)$/);
+                    if (itemMatch) {
+                        data.lineItems.push({
+                            description: itemMatch[1].trim(),
+                            quantity: itemMatch[2].replace(/,/g, ''),
+                            rate: itemMatch[3].replace(/,/g, '')
+                        });
+                    } else {
+                        // Sometimes pdf.js joins the items with fewer spaces or different formats
+                        // Let's try a fallback: if it ends with a number, it might be a line item
+                        // But we need at least qty and rate.
+                        // Let's look for: Text Number Number (if amount is missing or something)
+                        const fallbackMatch = line.match(/(.+?)\s+\$?([\d,]+(?:\.\d+)?)\s+\$?([\d,]+(?:\.\d+)?)$/);
+                        if (fallbackMatch && !line.match(/[a-zA-Z]{10,}/)) { // Avoid matching sentences
+                             data.lineItems.push({
+                                description: fallbackMatch[1].trim(),
+                                quantity: fallbackMatch[2].replace(/,/g, ''),
+                                rate: fallbackMatch[3].replace(/,/g, '')
+                            });
+                        }
+                    }
+                }
+            }
+
+            return data;
+        }
     </script>
 </body>
 </html>

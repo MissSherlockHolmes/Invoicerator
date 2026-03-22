@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Join Team - Invoicerator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+    <div id="navbar-container"></div>
+    
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 mx-auto text-center">
+                <h2 class="mb-4">Join Team</h2>
+                
+                <div id="status-message" class="alert alert-info">Processing your invite...</div>
+                
+                <div id="action-buttons" class="d-none mt-4">
+                    <p class="mb-3">You need to log in or create an account to join this team.</p>
+                    <a href="/login.html" class="btn btn-primary me-2">Log In</a>
+                    <a href="/signup.html" class="btn btn-success">Sign Up</a>
+                </div>
+
+                <div id="success-buttons" class="d-none mt-4">
+                    <a href="/options.html" class="btn btn-primary me-2">Go to Dashboard</a>
+                    <a href="/create_invoice.html" class="btn btn-success">Create Invoice</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from '/js/supabase.js';
+        import { renderNavbar } from '/js/navbar.js';
+
+        async function init() {
+            await renderNavbar();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const inviteToken = urlParams.get('token');
+            const statusDiv = document.getElementById('status-message');
+
+            if (!inviteToken) {
+                statusDiv.className = 'alert alert-danger';
+                statusDiv.textContent = 'Invalid or missing invite token.';
+                return;
+            }
+
+            // Save the invite token in sessionStorage in case they need to log in/sign up first
+            sessionStorage.setItem('pending_invite_token', inviteToken);
+
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session) {
+                statusDiv.className = 'alert alert-warning';
+                statusDiv.textContent = 'Please log in or sign up to accept this invite. Make sure to use the exact email address the invite was sent to.';
+                document.getElementById('action-buttons').classList.remove('d-none');
+                return;
+            }
+
+            // User is logged in, attempt to join the team
+            try {
+                const { data, error } = await supabase.rpc('accept_team_invite', {
+                    invite_token: inviteToken
+                });
+
+                if (error) throw error;
+
+                if (data === true) {
+                    statusDiv.className = 'alert alert-success';
+                    statusDiv.textContent = 'Successfully joined the team!';
+                    document.getElementById('success-buttons').classList.remove('d-none');
+                    sessionStorage.removeItem('pending_invite_token');
+                } else {
+                    statusDiv.className = 'alert alert-danger';
+                    statusDiv.textContent = 'Invalid invite token or team not found.';
+                }
+            } catch (err) {
+                console.error(err);
+                statusDiv.className = 'alert alert-danger';
+                statusDiv.textContent = err.message || 'An error occurred while joining the team.';
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -18,12 +18,14 @@
 <body>
     <div id="navbar-container"></div>
     <div class="container d-flex justify-content-center align-items-center min-vh-100">
-        <div class="text-center">
-            <h2 class="mb-4">Manage Your Account and Invoices</h2>
+        <div class="text-center w-100" style="max-width: 500px;">
+            <h2 id="welcome-message" class="mb-2">Welcome!</h2>
+            <p style="font-size: 16px; color: lightgray;" class="mb-5">Invoicing made better, quicker, and maybe almost fun.</p>
+            
             <div class="d-grid gap-3">
-                <a href="/profile.html" class="btn btn-primary btn-lg">Profile</a>
                 <a href="/create_invoice.html" class="btn btn-success btn-lg">Create Invoice</a>
                 <a href="/edit_invoice.html" class="btn btn-warning btn-lg">Edit Invoice</a>
+                <a href="/profile.html" class="btn btn-primary btn-lg">Profile & Team Settings</a>
                 <button id="logout-btn-options" class="btn btn-danger btn-lg">Logout</button>
             </div>
         </div>
@@ -42,6 +44,21 @@
                 return;
             }
             
+            // Fetch company name for the welcome message
+            const { data: teamMember } = await supabase
+                .from('team_members')
+                .select('team_id, teams(company_name)')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+            
+            const profile = teamMember ? teamMember.teams : null;
+            
+            if (profile && profile.company_name) {
+                document.getElementById('welcome-message').textContent = `Welcome back, ${profile.company_name}!`;
+            } else {
+                document.getElementById('welcome-message').textContent = `Welcome back!`;
+            }
+
             document.getElementById('logout-btn-options').addEventListener('click', async () => {
                 await supabase.auth.signOut();
                 window.location.href = '/';

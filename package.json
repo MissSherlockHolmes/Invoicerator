@@ -19,6 +19,7 @@
   "homepage": "https://github.com/MissSherlockHolmes/Invoicerator#readme",
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
-    "@supabase/supabase-js": "^2.99.3"
+    "@supabase/supabase-js": "^2.99.3",
+    "dotenv": "^17.3.1"
   }
 }

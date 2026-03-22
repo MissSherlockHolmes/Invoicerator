@@ -9,3 +9,4 @@ static/uploads
 .netlify
 node_modules/
 .env
+supabase_email_templates.md

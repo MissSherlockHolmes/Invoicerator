@@ -326,7 +326,7 @@
                         const finalWidth = img.width * ratio;
                         const finalHeight = img.height * ratio;
 
-                        doc.addImage(imgData, 'JPEG', 10, 10, finalWidth, finalHeight);
+                        doc.addImage(imgData, 'PNG', 10, 10, finalWidth, finalHeight);
                         yPos = 10 + finalHeight + 10;
                     }
                 } catch (e) {
@@ -486,8 +486,8 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // Use JPEG with 0.8 quality to significantly reduce file size
-                    const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+                    // Use PNG to preserve transparency
+                    const dataURL = canvas.toDataURL('image/png');
                     resolve(dataURL);
                 };
                 img.onerror = error => reject(error);

@@ -584,7 +584,12 @@
                     data = await response.json();
                 } else {
                     const text = await response.text();
-                    throw new Error(`Server returned a non-JSON error (Status ${response.status}): ${text.substring(0, 100)}...`);
+                    // If it's a 200 OK but not JSON, it might just be a plain text success message
+                    if (response.ok) {
+                        data = { message: text };
+                    } else {
+                        throw new Error(`Server returned a non-JSON error (Status ${response.status}): ${text.substring(0, 100)}...`);
+                    }
                 }
 
                 if (response.ok) {

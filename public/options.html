@@ -33,13 +33,31 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script type="module">
-        import { supabase } from '/js/supabase.js';
+        import { supabase, isSupabaseReady } from '/js/supabase.js';
         import { renderNavbar } from '/js/navbar.js';
         import { normId } from '/js/team-id.js';
+        import { serviceUnavailableMarkupDetailed } from '/js/supabase-connection.js';
 
         async function init() {
-            await renderNavbar();
-            const { data: { session } } = await supabase.auth.getSession();
+            const root = document.querySelector('body > .container');
+            let nav;
+            try {
+                if (!isSupabaseReady()) {
+                    if (root) root.innerHTML = serviceUnavailableMarkupDetailed();
+                    return;
+                }
+                nav = await renderNavbar();
+                if (!nav.ok) {
+                    if (root) root.innerHTML = serviceUnavailableMarkupDetailed();
+                    return;
+                }
+            } catch (err) {
+                console.error(err);
+                if (root) root.innerHTML = serviceUnavailableMarkupDetailed();
+                return;
+            }
+
+            const session = nav.session;
             if (!session) {
                 window.location.href = '/login.html';
                 return;

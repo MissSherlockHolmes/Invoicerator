@@ -53,75 +53,93 @@
     </div>
 
     <script type="module">
-        import { supabase } from '/js/supabase.js';
+        import { supabase, isSupabaseReady } from '/js/supabase.js';
+        import { serviceUnavailableMarkupDetailed } from '/js/supabase-connection.js';
 
-        // Check if an email was passed in the URL (e.g. from an invite link)
-        const urlParams = new URLSearchParams(window.location.search);
-        const prefillEmail = urlParams.get('email');
-        if (prefillEmail) {
-            document.addEventListener('DOMContentLoaded', () => {
+        (async () => {
+            const col = document.querySelector('.container .col-md-6.mx-auto');
+            if (!isSupabaseReady()) {
+                if (col) col.innerHTML = serviceUnavailableMarkupDetailed();
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const prefillEmail = urlParams.get('email');
+            if (prefillEmail) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    const emailInput = document.getElementById('email');
+                    if (emailInput) {
+                        emailInput.value = prefillEmail;
+                        emailInput.readOnly = true;
+                    }
+                });
                 const emailInput = document.getElementById('email');
                 if (emailInput) {
                     emailInput.value = prefillEmail;
-                    // Optionally make it readonly so they don't accidentally change it and break the invite
                     emailInput.readOnly = true;
                 }
-            });
-            // Also try setting it immediately in case DOMContentLoaded already fired
-            const emailInput = document.getElementById('email');
-            if (emailInput) {
-                emailInput.value = prefillEmail;
-                emailInput.readOnly = true;
             }
-        }
 
-        document.getElementById('togglePassword').addEventListener('click', function (e) {
-            const passwordInput = document.getElementById('password');
-            const eyeIcon = document.getElementById('eyeIcon');
-            const eyeSlashIcon = document.getElementById('eyeSlashIcon');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                eyeIcon.classList.add('d-none');
-                eyeSlashIcon.classList.remove('d-none');
-            } else {
-                passwordInput.type = 'password';
-                eyeIcon.classList.remove('d-none');
-                eyeSlashIcon.classList.add('d-none');
-            }
-        });
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error-message');
-            const btn = document.getElementById('login-btn');
-            
-            btn.disabled = true;
-            btn.textContent = 'Logging in...';
-            errorDiv.classList.add('d-none');
-
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
-
-            if (error) {
-                errorDiv.textContent = error.message;
-                errorDiv.classList.remove('d-none');
-                btn.disabled = false;
-                btn.textContent = 'Login';
-            } else {
-                // Check if they have a pending invite
-                const pendingInvite = sessionStorage.getItem('pending_invite_token');
-                if (pendingInvite) {
-                    window.location.href = '/accept_invite.html?token=' + pendingInvite;
+            document.getElementById('togglePassword').addEventListener('click', function (e) {
+                const passwordInput = document.getElementById('password');
+                const eyeIcon = document.getElementById('eyeIcon');
+                const eyeSlashIcon = document.getElementById('eyeSlashIcon');
+                
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    eyeIcon.classList.add('d-none');
+                    eyeSlashIcon.classList.remove('d-none');
                 } else {
-                    window.location.href = '/options.html';
+                    passwordInput.type = 'password';
+                    eyeIcon.classList.remove('d-none');
+                    eyeSlashIcon.classList.add('d-none');
                 }
-            }
-        });
+            });
+
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const errorDiv = document.getElementById('error-message');
+                const btn = document.getElementById('login-btn');
+                
+                btn.disabled = true;
+                btn.textContent = 'Logging in...';
+                errorDiv.classList.add('d-none');
+
+                let data;
+                let error;
+                try {
+                    const out = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+                    data = out.data;
+                    error = out.error;
+                } catch (err) {
+                    console.error(err);
+                    errorDiv.textContent = 'Internal connection error, please contact the site administrator or check back in an hour.';
+                    errorDiv.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
+                    return;
+                }
+
+                if (error) {
+                    errorDiv.textContent = error.message;
+                    errorDiv.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
+                } else {
+                    const pendingInvite = sessionStorage.getItem('pending_invite_token');
+                    if (pendingInvite) {
+                        window.location.href = '/accept_invite.html?token=' + pendingInvite;
+                    } else {
+                        window.location.href = '/options.html';
+                    }
+                }
+            });
+        })();
     </script>
 </body>
 </html>

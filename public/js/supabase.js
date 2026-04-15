@@ -5,4 +5,15 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const supabaseUrl = 'https://blqzmaxcbsegeskvedwv.supabase.co'
 const supabaseAnonKey = 'sb_publishable_2_NDf00PPwBgzM8uH63I1g_byoOVg31'
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+let supabase = null
+try {
+    supabase = createClient(supabaseUrl, supabaseAnonKey)
+} catch (err) {
+    console.error('Invoicerator: failed to create Supabase client', err)
+}
+
+export { supabase }
+
+export function isSupabaseReady() {
+    return supabase != null
+}

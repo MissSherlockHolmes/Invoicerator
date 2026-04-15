@@ -31,15 +31,36 @@
     </div>
 
     <script type="module">
-        import { supabase } from '/js/supabase.js';
+        import { supabase, isSupabaseReady } from '/js/supabase.js';
         import { renderNavbar } from '/js/navbar.js';
+        import { serviceUnavailableMarkupDetailed } from '/js/supabase-connection.js';
 
         async function init() {
-            await renderNavbar();
+            const statusDiv = document.getElementById('status-message');
+            let nav;
+            try {
+                if (!isSupabaseReady()) {
+                    statusDiv.className = 'alert alert-warning text-start';
+                    statusDiv.innerHTML = serviceUnavailableMarkupDetailed();
+                    return;
+                }
+                nav = await renderNavbar();
+                if (!nav.ok) {
+                    statusDiv.className = 'alert alert-warning text-start';
+                    statusDiv.innerHTML = serviceUnavailableMarkupDetailed();
+                    return;
+                }
+            } catch (err) {
+                console.error(err);
+                statusDiv.className = 'alert alert-warning text-start';
+                statusDiv.innerHTML = serviceUnavailableMarkupDetailed();
+                return;
+            }
+
+            const session = nav.session;
 
             const urlParams = new URLSearchParams(window.location.search);
             const inviteToken = urlParams.get('token');
-            const statusDiv = document.getElementById('status-message');
 
             if (!inviteToken) {
                 statusDiv.className = 'alert alert-danger';
@@ -50,8 +71,6 @@
             // Save the invite token in sessionStorage in case they need to log in/sign up first
             sessionStorage.setItem('pending_invite_token', inviteToken);
 
-            const { data: { session } } = await supabase.auth.getSession();
-            
             if (!session) {
                 // Fetch the email associated with this token so we can pre-fill it
                 try {

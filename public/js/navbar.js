@@ -1,10 +1,23 @@
 import { supabase } from './supabase.js';
+import { getSessionSafe } from './supabase-connection.js';
 
 export async function renderNavbar() {
     const container = document.getElementById('navbar-container');
-    if (!container) return;
+    if (!container) return { ok: true, session: null };
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const sessionResult = await getSessionSafe(supabase);
+    if (!sessionResult.ok) {
+        container.innerHTML = `
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+                <span class="navbar-brand">Invoicerator</span>
+                <span class="navbar-text text-warning small">Internal connection error</span>
+            </div>
+        </nav>`;
+        return { ok: false, session: null };
+    }
+
+    const session = sessionResult.data?.session ?? null;
     const path = window.location.pathname;
 
     const homeLink = session ? '/options.html' : '/';
@@ -77,4 +90,6 @@ export async function renderNavbar() {
             });
         }
     }
+
+    return { ok: true, session };
 }

@@ -1,0 +1,28 @@
+# Pings the Supabase REST API on a schedule so the free-tier project stays active.
+# Add repo secrets: SUPABASE_URL (e.g. https://xxxx.supabase.co), SUPABASE_ANON_KEY
+name: Keep Supabase Awake
+
+on:
+  schedule:
+    - cron: '0 0 * * 1,4' # Monday and Thursday at 00:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (REST)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY repository secrets."
+            exit 1
+          fi
+          BASE="${SUPABASE_URL%/}"
+          curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+            -X GET "${BASE}/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}"

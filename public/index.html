@@ -18,29 +18,42 @@
         <div class="text-center" id="content-area">
             <!-- Content injected via JS based on auth state -->
             <h2>Welcome to Invoicerator</h2>
-            <p>Loading...</p>
+            <p class="text-muted mb-0">Connecting to your account&hellip;</p>
         </div>
     </div>
 
     <script type="module">
-        import { supabase } from '/js/supabase.js';
+        import { isSupabaseReady } from '/js/supabase.js';
         import { renderNavbar } from '/js/navbar.js';
+        import { serviceUnavailableMarkupDetailed } from '/js/supabase-connection.js';
 
         async function init() {
-            await renderNavbar();
-            const { data: { session } } = await supabase.auth.getSession();
             const contentArea = document.getElementById('content-area');
+            try {
+                if (!isSupabaseReady()) {
+                    contentArea.innerHTML = serviceUnavailableMarkupDetailed();
+                    return;
+                }
+                const nav = await renderNavbar();
+                if (!nav.ok) {
+                    contentArea.innerHTML = serviceUnavailableMarkupDetailed();
+                    return;
+                }
+                const session = nav.session;
 
-            if (session) {
-                // If they are already logged in and visit the homepage, redirect them straight to the dashboard
-                window.location.href = '/options.html';
-            } else {
-                contentArea.innerHTML = `
+                if (session) {
+                    window.location.href = '/options.html';
+                } else {
+                    contentArea.innerHTML = `
                     <h2>Welcome to Invoicerator</h2>
                     <p>Create and send invoices quickly and securely.</p>
                     <a href="/login.html" class="btn btn-primary btn-block mb-3">Login</a>
                     <a href="/signup.html" class="btn btn-success btn-block mb-3">Sign Up</a>
                 `;
+                }
+            } catch (err) {
+                console.error(err);
+                contentArea.innerHTML = serviceUnavailableMarkupDetailed();
             }
         }
 

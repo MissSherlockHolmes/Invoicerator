@@ -80,10 +80,26 @@
 
         async function init() {
             const { renderNavbar } = await import('/js/navbar.js');
-            const { supabase } = await import('/js/supabase.js');
-            await renderNavbar();
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
+            const { isSupabaseReady } = await import('/js/supabase.js');
+            const { serviceUnavailableMarkupDetailed } = await import('/js/supabase-connection.js');
+            const root = document.querySelector('.container');
+            let nav;
+            try {
+                if (!isSupabaseReady()) {
+                    if (root) root.innerHTML = serviceUnavailableMarkupDetailed();
+                    return;
+                }
+                nav = await renderNavbar();
+                if (!nav.ok) {
+                    if (root) root.innerHTML = serviceUnavailableMarkupDetailed();
+                    return;
+                }
+            } catch (err) {
+                console.error(err);
+                if (root) root.innerHTML = serviceUnavailableMarkupDetailed();
+                return;
+            }
+            if (!nav.session) {
                 window.location.href = '/login.html';
             }
         }

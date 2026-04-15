@@ -65,7 +65,13 @@
     </div>
 
     <script type="module">
-        import { supabase } from '/js/supabase.js';
+        import { supabase, isSupabaseReady } from '/js/supabase.js';
+        import { serviceUnavailableMarkupDetailed } from '/js/supabase-connection.js';
+
+        const signupCol = document.querySelector('.container .col-md-6');
+        if (!isSupabaseReady()) {
+            if (signupCol) signupCol.innerHTML = serviceUnavailableMarkupDetailed();
+        } else {
 
         // Check if an email was passed in the URL (e.g. from an invite link)
         const urlParams = new URLSearchParams(window.location.search);
@@ -201,10 +207,23 @@
             btn.disabled = true;
             btn.textContent = 'Signing up...';
 
-            const { data, error } = await supabase.auth.signUp({
-                email,
-                password
-            });
+            let data;
+            let error;
+            try {
+                const out = await supabase.auth.signUp({
+                    email,
+                    password
+                });
+                data = out.data;
+                error = out.error;
+            } catch (err) {
+                console.error(err);
+                errorDiv.textContent = 'Internal connection error, please contact the site administrator or check back in an hour.';
+                errorDiv.classList.remove('d-none');
+                btn.disabled = false;
+                btn.textContent = 'Sign Up';
+                return;
+            }
 
             if (error) {
                 errorDiv.textContent = error.message;
@@ -235,6 +254,7 @@
                 }
             }
         });
+        }
     </script>
 </body>
 </html>

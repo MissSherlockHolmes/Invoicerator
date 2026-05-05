@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Ping Supabase (REST)
+      - name: Touch Supabase heartbeat RPC
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -26,14 +26,32 @@ jobs:
           fi
           BASE="${SUPABASE_URL%/}"
 
-          echo "Pinging Supabase via PostgREST..."
-          HTTP_CODE="$(curl -sS --retry 3 --retry-delay 5 --retry-connrefused -o /dev/null -w "%{http_code}" \
-            -X GET "${BASE}/rest/v1/profiles?select=id&limit=1" \
+          echo "Touching keep-alive heartbeat via RPC..."
+          RPC_BODY="$(mktemp)"
+          RPC_CODE="$(curl -sS --retry 3 --retry-delay 5 --retry-connrefused -o "${RPC_BODY}" -w "%{http_code}" \
+            -X POST "${BASE}/rest/v1/rpc/keepalive_heartbeat_touch" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"p_source":"github-actions"}')"
+
+          echo "RPC HTTP ${RPC_CODE}"
+          echo "RPC response: $(tr -d '\n' < "${RPC_BODY}")"
+          if [ "${RPC_CODE}" -lt 200 ] || [ "${RPC_CODE}" -ge 300 ]; then
+            echo "Supabase heartbeat RPC failed."
+            exit 1
+          fi
+
+          echo "Reading heartbeat row for verification..."
+          VERIFY_BODY="$(mktemp)"
+          VERIFY_CODE="$(curl -sS --retry 3 --retry-delay 5 --retry-connrefused -o "${VERIFY_BODY}" -w "%{http_code}" \
+            -X GET "${BASE}/rest/v1/keepalive_heartbeat?select=last_seen_at,source,updated_at&id=eq.1" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")"
 
-          echo "HTTP ${HTTP_CODE}"
-          if [ "${HTTP_CODE}" -lt 200 ] || [ "${HTTP_CODE}" -ge 300 ]; then
-            echo "Supabase keep-alive ping failed."
+          echo "VERIFY HTTP ${VERIFY_CODE}"
+          echo "VERIFY response: $(tr -d '\n' < "${VERIFY_BODY}")"
+          if [ "${VERIFY_CODE}" -lt 200 ] || [ "${VERIFY_CODE}" -ge 300 ]; then
+            echo "Supabase heartbeat verification read failed."
             exit 1
           fi

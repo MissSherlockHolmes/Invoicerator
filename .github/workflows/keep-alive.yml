@@ -6,12 +6,13 @@ name: Keep Supabase Awake
 
 on:
   schedule:
-    - cron: '0 0 * * 1,4' # Monday and Thursday at 00:00 UTC
+    - cron: '0 */12 * * *' # Every 12 hours (00:00 and 12:00 UTC)
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Ping Supabase (REST)
         env:
@@ -26,7 +27,7 @@ jobs:
           BASE="${SUPABASE_URL%/}"
 
           echo "Pinging Supabase via PostgREST..."
-          HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" \
+          HTTP_CODE="$(curl -sS --retry 3 --retry-delay 5 --retry-connrefused -o /dev/null -w "%{http_code}" \
             -X GET "${BASE}/rest/v1/profiles?select=id&limit=1" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")"
